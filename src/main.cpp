@@ -23,9 +23,16 @@ typedef void (*pointerFunction)(void);
 pointerFunction pfunc = &loop;
 //typedef void (*loop_func)();
 
-int t = 0;
+
+
+double t = 0;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 
+
+void onButtonA(String str = "") {
+  display.println(str);
+
+}
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(BAUD_RATE);
@@ -61,10 +68,19 @@ void loop() {
   display.print("Time elapsed: ");
   display.print(t);
   display.print("s");
+  display.println("");
+  //yield();
+ 
+  display.setCursor(0,0);
+  if (digitalRead(BUTTON_A) == 0) display.println("Pressed A"); 
+  if (digitalRead(BUTTON_B) == 0) display.println("Pressed B");
+  if (digitalRead(BUTTON_C) == 0) display.println("Pressed C");
+
+  t += 0.1;
+  delay(100);
   yield();
   display.display();
-  delay(1000);
-  t++;
+  
 
   /*
   int n = WiFi.scanNetworks();
