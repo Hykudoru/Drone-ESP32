@@ -20,19 +20,86 @@ const int BUTTON_C = 14;
 
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
-pointerFunction pfunc = &loop;
-//typedef void (*loop_func)();
-
-
-
-double t = 0;
+pointerFunction pfunc;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 
+//timer
+void mode_1() {
+  static double t = 0;
 
-void onButtonA(String str = "") {
-  display.println(str);
+  display.clearDisplay();
 
+  display.setCursor(0, 0);
+  display.write("Mode 1");
+
+  Serial.print("Time elapsed: ");
+  Serial.println(t);
+  
+  display.setCursor(0,32/2);
+  display.print("Time elapsed: ");
+  display.print(t);
+  display.print("s");
+  display.println("");
+  
+  t += 0.1;
+  delay(100);
+  yield();
+  display.display();
 }
+
+void mode_2(){
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.println("Mode 2: Scanning WiFi");
+
+  int n = WiFi.scanNetworks();
+  
+  if (n == 0) {
+    display.println("0 networks found");
+  }
+  else {
+    for (byte i = 0; i < n; ++i)
+    {
+      display.print("SSID: ");
+      display.println(WiFi.SSID(i));
+      display.print("RSSI: ");
+      display.println(WiFi.RSSI(i));
+      display.print("encryptionType: ");
+      display.println(WiFi.encryptionType(i));
+      delay(10);
+      if (WiFi.isConnected()){
+        display.println("You're connected to WiFi");
+        break;
+      }
+    }
+  }
+
+  if (WiFi.isConnected()){
+    display.clearDisplay();
+    Serial.println("You're connected to WiFi");
+    display.display();
+    delay(500);
+    pfunc = &mode_1;
+    return;
+  }
+
+  display.display();
+  //default delay rescan
+  delay(5000);
+  yield();
+  
+}
+
+void mode_3(){
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.write("Mode 3");
+
+  delay(10);
+  yield();
+  display.display();
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(BAUD_RATE);
@@ -54,65 +121,28 @@ void setup() {
   pinMode(BUTTON_C, INPUT_PULLUP);
 
   WiFi.mode(WIFI_STA);//Stationary mode
-  WiFi.disconnect();//Disconnect incase was connected to AP  
+  WiFi.disconnect();//Disconnect incase was connected to AP
+
+  pfunc = &mode_1;  
 }
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  Serial.print("Time elapsed: ");
-  Serial.println(t);
-  
-  display.clearDisplay();
-  display.setCursor(0,32/2);
-  display.print("Time elapsed: ");
-  display.print(t);
-  display.print("s");
-  display.println("");
-  //yield();
- 
-  display.setCursor(0,0);
-  if (digitalRead(BUTTON_A) == 0) display.println("Pressed A"); 
-  if (digitalRead(BUTTON_B) == 0) display.println("Pressed B");
-  if (digitalRead(BUTTON_C) == 0) display.println("Pressed C");
 
-  t += 0.1;
-  delay(100);
-  yield();
-  display.display();
+  if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
+  if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
+  if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
   
+  (*pfunc)();
+
+  
+  
+  
+  
+ 
 
   /*
-  int n = WiFi.scanNetworks();
   
-  if (n == 0) {
-    Serial.println("0 networks found");
-  }
-  else {
-    for (byte i = 0; i < n; ++i)
-    {
-      Serial.print("SSID: ");
-      Serial.println(WiFi.SSID(i));
-      Serial.print("RSSI: ");
-      Serial.println(WiFi.RSSI(i));
-      Serial.print("encryptionType: ");
-      Serial.println(WiFi.encryptionType(i));
-      delay(10);
-      if (WiFi.isConnected()){
-        Serial.println("You're connected to WiFi");
-        break;
-      }
-    }
-  }
-
-  if (WiFi.isConnected()){
-    Serial.println("You're connected to WiFi");
-    //pfunc = someNewProcedure;
-    return;
-  }
-
-  //default delay rescan
-  delay(5000);
   */
 }
 
