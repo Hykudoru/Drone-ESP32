@@ -6,11 +6,14 @@
 //#include <WiFiScan.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 
 const int I2C_ADDR = 0x3C; // Can be shared with other I2C devices
 const int BUTTON_A = 15;//GPIO 15 or A8
 const int BUTTON_B = 32;
 const int BUTTON_C = 14;
+int ACCEL_GYRO_ADDR = 0x68;
 
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
@@ -22,78 +25,53 @@ const int BUTTON_C = 14;
 typedef void (*pointerFunction)(void);
 pointerFunction pfunc;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
+Adafruit_MPU6050 mpu;
 
-//timer
+void setupMPU(Adafruit_MPU6050 mpu) {
+  if (!mpu.begin()) {
+    Serial.println("MPU not detected!");
+    while (1)
+    {
+      yield();
+    }
+  }
+  else {
+    Serial.println("MPU detected!");
+  }
+}
+
+void loopMPU(Adafruit_MPU6050 mpu) {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+}
+
 void mode_1() {
-  static double t = 0;
-
   display.clearDisplay();
-
   display.setCursor(0, 0);
   display.write("Mode 1");
 
-  Serial.print("Time elapsed: ");
-  Serial.println(t);
-  
-  display.setCursor(0,32/2);
-  display.print("Time elapsed: ");
-  display.print(t);
-  display.print("s");
-  display.println("");
-  
-  t += 0.1;
+
   delay(100);
   yield();
   display.display();
 }
 
-void mode_2(){
+void mode_2() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.println("Mode 2: Scanning WiFi");
+  display.write("Mode 1");
 
-  int n = WiFi.scanNetworks();
-  
-  if (n == 0) {
-    display.println("0 networks found");
-  }
-  else {
-    for (byte i = 0; i < n; ++i)
-    {
-      display.print("SSID: ");
-      display.println(WiFi.SSID(i));
-      display.print("RSSI: ");
-      display.println(WiFi.RSSI(i));
-      display.print("encryptionType: ");
-      display.println(WiFi.encryptionType(i));
-      delay(10);
-      if (WiFi.isConnected()){
-        display.println("You're connected to WiFi");
-        break;
-      }
-    }
-  }
 
-  if (WiFi.isConnected()){
-    display.clearDisplay();
-    Serial.println("You're connected to WiFi");
-    display.display();
-    delay(500);
-    pfunc = &mode_1;
-    return;
-  }
-
-  display.display();
-  //default delay rescan
-  delay(5000);
+  delay(10);
   yield();
-  
+  display.display();
 }
 
-void mode_3(){
+void mode_3() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.write("Mode 3");
+  display.write("Mode 1");
+
 
   delay(10);
   yield();
@@ -119,11 +97,9 @@ void setup() {
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
-
-  WiFi.mode(WIFI_STA);//Stationary mode
-  WiFi.disconnect();//Disconnect incase was connected to AP
-
+  
   pfunc = &mode_1;  
+  setupMPU(mpu);
 }
 
 
@@ -135,15 +111,5 @@ void loop() {
   
   (*pfunc)();
 
-  
-  
-  
-  
- 
-
-  /*
-  
-  */
+  loopMPU(mpu);
 }
-
-//pLoop* = function();
