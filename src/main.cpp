@@ -88,46 +88,6 @@ void mode_3() {
   display.display();
 }
 
-
-void mpuSetup() 
-{
-  if (!mpu.begin()) {
-    Serial.println("MPU not detected!");
-    while (1)
-    {
-      yield();
-    }
-  }
-  else {
-    Serial.println("MPU detected!");
-  }
-}
-void mpuLoop() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  Serial.printf("Temperature: %sC ", temp);
-  
-  Serial.println("");
-
-  a.timestamp;
-  Serial.printf("Acceleration: <x: %f, y: %f, z: %f> m/s^2", a.acceleration.x, a.acceleration.y, a.acceleration.z);
-  //Serial.printf("a.data: %f ", a.data);
-  //Serial.printf("a.current: %f ", a.current);
-  
-  Serial.println("");
-  Serial.printf("Rotation: %f, y: %f, z: %f", g.gyro.x, g.gyro.y, g.gyro.z);
-
-  Serial.printf("g.gyro.v: %f ", g.gyro.v);
-  Serial.printf("g.gyro.status: %f ", g.gyro.status);
-  Serial.printf("g.gyro.heading: %f ", g.gyro.heading);
-  Serial.printf("g.gyro.roll: %f ", g.gyro.roll);
-  Serial.printf("g.gyro.pitch: %f ", g.gyro.pitch);
- 
- delay(10);
-}
-
-
 void setup() 
 {
   Serial.begin(BAUD_RATE);
