@@ -10,6 +10,21 @@
 #include <Adafruit_Sensor.h>
 #include <Drone.h>
 
+unsigned long totalTime = 0;
+unsigned long deltaTime = 0;//time difference (in seconds) between each loop;
+
+void timeLoop() {
+  static unsigned long prevTime = 0;
+  
+  totalTime = millis()/1000.0;
+  deltaTime = (millis() - prevTime)/1000.0;
+
+  Serial.print("deltaTime:");Serial.println(deltaTime);
+  Serial.print("Time:");Serial.println(totalTime);
+
+  prevTime = millis();//update time
+}
+
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
 #else
@@ -24,67 +39,91 @@ int ACCEL_GYRO_ADDR = 0x68;
 
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
-pointerFunction pfunc;
+pointerFunction ptrMode;
 
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 Adafruit_MPU6050 mpu;
-Drone drone;
+Drone drone = Drone();
+sensors_event_t a, g, temp;
 
+void printVector(float x, float y, float z, String header = "") {
+  Serial.println("");
 
-void print(String str, boolean appendEmptyNewLine = false)
-{
-  Serial.print(str);
-  display.print(str);
+  Serial.println(header); 
+  Serial.print(x); Serial.print(", ");
+  Serial.print(y); Serial.print(", ");
+  Serial.println(z); 
 
-  if (appendEmptyNewLine) {
-    Serial.println("");
-    display.println("");
-  }
+  display.println(header); 
+  display.print(x); display.print(", ");
+  display.print(y); display.print(", ");
+  display.println(z); 
+
+  display.display();
 }
 
-void println(String str, boolean appendEmptyNewLine = false)
+void mpuSetup() 
 {
-  Serial.println(str);
-  display.println(str);
+  if (!mpu.begin()) {
+    Serial.println("MPU not detected!");
+    while (1)
+    {
+      yield();
+    }
+  }
+  else {
+    Serial.println("MPU detected!");
+    Serial.println(mpu.getAccelerometerRange());
+    Serial.println(mpu.getGyroRange());
+    Serial.println(mpu.getFilterBandwidth());
+    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  //mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  }
+}
+                            static Vector3 vector;
+void mpuLoop() 
+{
+  static int count = 0;
+  display.clearDisplay();
+  display.setCursor(0, 0);
 
-  if (appendEmptyNewLine) {
-    Serial.println("");
-    display.println("");
+  if (mpu.getEvent(&a, &g, &temp)) {
+    count++;
+    Serial.printf("mpu.getEvent %d times \n", count);
+
+                            vector.x += a.acceleration.x;
+                            vector.y += a.acceleration.y;
+                            vector.z += a.acceleration.z;
   }
 }
 
 void mode_1() {
-  static int i = 0;
-  if (i++ == 0) Serial.println("Mode 1");
-
   display.clearDisplay();
   display.setCursor(0, 0);
   display.println("Mode 1");
 
-  delay(100);
-  yield();
+  printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Acceleration (m/s^2)");
+
   display.display();
 }
 
 void mode_2() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  println("Mode 2", true);
+  display.println("Mode 2");
 
+  printVector(g.gyro.x, g.gyro.y, g.gyro.z, "Gyro (rad/s)");
 
-  delay(10);
-  yield();
   display.display();
 }
+
 
 void mode_3() {
   display.clearDisplay();
   display.setCursor(0, 0);
-  println("Mode 3", true);
-  
-  
-  delay(10);
-  yield();
+  display.println("Mode 3");
+
   display.display();
 }
 
@@ -101,29 +140,40 @@ void setup()
   display.setCursor(0, 0);
   display.println("Setup...");
   display.display();
-
+  
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
   
-  pfunc = &mode_1;  
+  ptrMode = &mode_1;  
   
-  //mpuSetup();
-  drone.setup();
+  mpuSetup();//drone.setup();
 
   delay(500);
-  display.clearDisplay();//clears initial adafruit image
+  display.clearDisplay();
 }
-
 
 void loop() 
 {
-  if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
-  if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
-  if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
-  
-  //(*pfunc)();
+  timeLoop();
 
-  drone.loop();
-  //mpuLoop();
+  static float t = 0;
+  static float delayPeriod = 1.0;// sec
+  
+  //delay
+  if ((totalTime - t) >= delayPeriod)
+  {
+    t = totalTime; //reset timer
+  }
+
+  mpuLoop();
+
+  //input
+  if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
+  if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
+  if (digitalRead(BUTTON_C) == 0) ptrMode = &mode_3;
+
+  (*ptrMode)();
+
+  delay(10);
 }

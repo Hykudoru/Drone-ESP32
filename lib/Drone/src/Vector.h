@@ -3,7 +3,6 @@
 
 struct Vector3
 {
-    float xyz[3];
     float x;
     float y;
     float z;
