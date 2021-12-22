@@ -21,24 +21,6 @@ Vector3::Vector3(float xyz[])
     z = xyz[2];
 }
 
-Vector3 Vector3 add(Vector3 vec)
-{
-    x += vec.x;
-    y += vec.y;
-    z += vec.z;
-    
-    return this;
-}
-
-Vector3 Vector3 sub(Vector3 vec)
-{
-    x -= vec.x;
-    y -= vec.y;
-    z -= vec.z;
-    
-    return this;
-}
-
 Vector3 Vector3::scale(float scalar)
 {
     x *= scalar;
@@ -55,7 +37,7 @@ float Vector3::magnitude()
 
 Vector3 Vector3::normalize()
 {
-    length = magnitude();
+    float length = magnitude();
     x /= length;
     y /= length;
     z /= length;
@@ -63,9 +45,9 @@ Vector3 Vector3::normalize()
     return this;
 }
 
-Vector3 normalized(Vector3)
+Vector3 normalized(Vector3 vec)
 {
-    length = magnitude();
+    float length = vec.magnitude();
     return new Vector3(x/length, y/length, z/length);
 }
 
@@ -79,29 +61,34 @@ float dotProduct(float a, float b, theta)
     return a*b*cos(theta);
 }
 
+// Calcs unit vector perpendicular to both a and b vectors
 Vector3 CrossProduct(Vector3 a, Vector3 b)
 {
     /*
     long matrix2x3[2][3] = { }
     //row1
-    matrix2x3[0][0] = a.x;
-    matrix2x3[0][1] = a.y;
-    matrix2x3[0][2] = a.z;
+    matrix[0][0] = a.x;
+    matrix[0][1] = a.y;
+    matrix[0][2] = a.z;
     //row2
-    matrix2x3[1][0] = b.x;
-    matrix2x3[1][1] = b.y;
-    matrix2x3[1][2] = b.z;
+    matrix[1][0] = b.x;
+    matrix[1][1] = b.y;
+    matrix[1][2] = b.z;
+    */
+    
+    /*
+     |  i | j | k  |
+     | a.x a.y a.z |
+     | b.x b.y b.z |
     */
     //Vector product A X B
-    Vector3 vectorAxB = new Vector3();
-    vectorAxB.x = (a.y*b.z - a.z*b.y); //i 
-    vectorAxB.y = -(a.x*b.z) + (a.z*b.x);// -(a.x*b.z - a.z*b.x), //-j
-    vectorAxB.z = (a.x*b.y - a.y*b.x); //k
-                      };
-    return vectorAxB;
-    /*
-         |  i | j | k  |
-     A   | a.x a.y a.z |
-     B   | b.x b.y b.z |
+    Vector3 u = new Vector3();
+    u.x = (a.y*b.z - a.z*b.y); //i 
+    u.y = -(a.x*b.z) + (a.z*b.x);// -(a.x*b.z - a.z*b.x), //-j
+    u.z = (a.x*b.y - a.y*b.x); //k
+              };
+    /* To check is orthogonal:
+    bool isPerpendicular = dotProduct(u, a) == 0 && dotProduct(u, b) == 0;
     */
+    return u; 
 }
