@@ -24,6 +24,18 @@ void timeLoop() {
   prevTime = millis();//update time
 }
 
+void delay(double interval, void(*callback)(void))
+{
+  static unsigned long t = 0.0;
+  //delay
+  if ((totalTime - t) >= interval/1000.0)
+  {
+    t = totalTime; //reset timer
+    callback();
+    Serial.println(String("----------------------CALLBACK : t:")+ t/1000.0);
+  }
+}
+
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
 #else
@@ -40,12 +52,14 @@ int ACCEL_GYRO_ADDR = 0x68;
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
 
+
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 Adafruit_MPU6050 mpu;
 Drone drone = Drone();
 sensors_event_t a, g, temp;
 
-void printVector(float x, float y, float z, String header = "") {
+
+void printVector(double x, double y, double z, String header = "") {
   Serial.println("");
 
   Serial.println(header); 
@@ -61,43 +75,44 @@ void printVector(float x, float y, float z, String header = "") {
   display.display();
 }
 
-
-
 Vector3 zeroOffsetAccel;
-void calibrate() {
-  double x, y, z = 0.0;
-  int nSamples = 100;
-  
-  Serial.println("Calibrating...");
-  Serial.print(mpu.getEvent(&a, &g, &temp));
-  printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Noise: ");
-  for (size_t i = 0; i < nSamples; i++)
-  {
-    Serial.print(mpu.getEvent(&a, &g, &temp));
-    x += a.acceleration.x;
-    y += a.acceleration.y;
-    z += a.acceleration.z;
-    
-    delay(1);
-  }
-
-  x /= nSamples;
-  y /= nSamples;
-  z /= nSamples;
-  
-  zeroOffsetAccel.x = x;
-  zeroOffsetAccel.y = y;
-  zeroOffsetAccel.z = z;
-
-  Vector3 calib = Vector3(a.acceleration.x - zeroOffsetAccel.x, a.acceleration.y - zeroOffsetAccel.y, a.acceleration.z - zeroOffsetAccel.z);
-  printVector(x, y, z, "Zero Offset");
-  printVector(calib.x, calib.y, calib.z, "Calibrated: ");
-
-  delay(5000);
-}
 Vector3 acceleration() {
   return Vector3(a.acceleration.x - zeroOffsetAccel.x, a.acceleration.y - zeroOffsetAccel.y, a.acceleration.z - zeroOffsetAccel.z);
 }
+
+void calibrate() {
+  double x, y, z = 0.0;
+  int nSamples = 100;
+
+  Serial.println("Calibrating...");
+  for (size_t i = 0; i < nSamples; i++) 
+  {
+    if (mpu.getEvent(&a, &g, &temp))
+    {
+      Serial.print(mpu.getEvent(&a, &g, &temp));
+      x += a.acceleration.x;
+      y += a.acceleration.y;
+      z += a.acceleration.z;
+    }
+    
+    delayMicroseconds(10);
+  }
+
+  x /= (float)nSamples;
+  y /= (float)nSamples;
+  z /= (float)nSamples;
+  
+  zeroOffsetAccel.x = x-0.0;
+  zeroOffsetAccel.y = y-0.0;
+  zeroOffsetAccel.z = z-9.81;
+
+  Vector3 calib = acceleration();
+  printVector(zeroOffsetAccel.x, zeroOffsetAccel.y, zeroOffsetAccel.z, "Zero Offset");
+  printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Before: ");
+  printVector(calib.x, calib.y, calib.z, "Calibrated: ");
+  delay(5000);
+}
+
 
 void mpuSetup() 
 {
@@ -169,7 +184,6 @@ void mode_3() {
 }
 
 
-
 void debug() {
   unsigned long ul = millis();
   long l = millis();
@@ -194,6 +208,10 @@ void debug() {
   Serial.println(String("Accelerometer Range: ")+mpu.getAccelerometerRange()+"");
   delay(100.0);
 }
+void test()
+{
+  Serial.println("Test");
+}
 
 void inputLoop()
 {
@@ -206,16 +224,33 @@ void inputLoop()
     char c = Serial.read();
     Serial.print("Serial.read() : "); 
     Serial.println(c);
+    
     if (c == 'd')
     {
       ptrMode = &debug;// or debug(); delay(1000);
     }
+    if (c == 'c')
+    {
+      ptrMode = &calibrate;
+    }
+    if (c == 'p') {
+      delay(5000);
+    }
   }
 }
 
+
+bool DEBUGGING = true;
 void setup() 
 {
   Serial.begin(BAUD_RATE);
+  if (DEBUGGING) {
+    while (!Serial)
+    {
+      ;
+    }
+  }
+  
   Serial.println("Setup...");
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -244,19 +279,15 @@ void loop()
 {
   static int count = 0;
   count++;
-  Serial.printf("loop() count:  %d times \n", count);
+  Serial.printf("-----------loop() count:  %d times \n", count);
   
   timeLoop();
   mpuLoop();
   inputLoop();
+
   (*ptrMode)();
 
-  static long t = 0.0;
-  static long delayPeriod = 1.0;// sec
-  
-  //delay
-  if ((totalTime - t) >= delayPeriod)
-  {
-    t = totalTime; //reset timer
-  }
+  delay(500, test);
+  delay(500, test);
+  delay(500, test);
 }
