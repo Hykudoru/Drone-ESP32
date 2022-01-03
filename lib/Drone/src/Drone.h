@@ -5,10 +5,10 @@
 class Drone
 {
     private:
-        Vector3 position;
-        Vector3 rotation;
-        Vector3 velocity;
-        Vector3 angularVelocity;
+        Vector3<float> position;
+        Vector3<float> rotation;
+        Vector3<float> velocity;
+        Vector3<float> angularVelocity;
         
         Adafruit_MPU6050 mpu;
     public:

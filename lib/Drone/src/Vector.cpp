@@ -1,27 +1,6 @@
 #include "Vector.h"
 
-Vector3::Vector3()
-{
-    x = 0;
-    y = 0;
-    z = 0;
-}
-
-Vector3::Vector3(float xVal, float yVal, float zVal)
-{
-    x = xVal;
-    y = yVal;
-    z = zVal;
-}
-
-Vector3::Vector3(float xyz[])
-{
-    x = xyz[0];
-    y = xyz[1];
-    z = xyz[2];
-}
-
-// Vector3 Vector3::scale(float scalar)
+// Vector3<double> Vector3<double>::scale(float scalar)
 // {
 //     x *= scalar;
 //     y *= scalar;
@@ -30,12 +9,12 @@ Vector3::Vector3(float xyz[])
 //     return this;
 // }
 
-// float Vector3::magnitude()
+// float Vector3<double>::magnitude()
 // {
 //     return sqrt(x*x + y*y + z*z);
 // }
 
-// Vector3 Vector3::normalize()
+// Vector3<double> Vector3<double>::normalize()
 // {
 //     float length = magnitude();
 //     x /= length;
@@ -45,13 +24,13 @@ Vector3::Vector3(float xyz[])
 //     return this;
 // }
 
-// Vector3 normalized(Vector3 vec)
+// Vector3<double> normalized(Vector3<double> vec)
 // {
 //     float length = vec.magnitude();
-//     return new Vector3(x/length, y/length, z/length);
+//     return new Vector3<double>(x/length, y/length, z/length);
 // }
-
-float dotProduct(Vector3 a, Vector3 b)
+template <typename T>
+T dotProduct(Vector3<T> a, Vector3<T> b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
@@ -61,8 +40,9 @@ float dotProduct(Vector3 a, Vector3 b)
 //     return a*b*cos(theta);
 // }
 
+template <typename T>
 // Calcs unit vector perpendicular to both a and b vectors
-Vector3 crossProduct(Vector3 a, Vector3 b)
+Vector3<T> crossProduct(Vector3<T> a, Vector3<T> b)
 {
     /*
     long matrix2x3[3][3] = { }
@@ -82,7 +62,7 @@ Vector3 crossProduct(Vector3 a, Vector3 b)
      | b.x b.y b.z |
     */
     //Vector product A X B
-    Vector3 u;
+    Vector3<T> u;
     u.x = (a.y*b.z - a.z*b.y); //i 
     u.y = -(a.x*b.z) + (a.z*b.x);// -(a.x*b.z - a.z*b.x), //-j
     u.z = (a.x*b.y - a.y*b.x); //k

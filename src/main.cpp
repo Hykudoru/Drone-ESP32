@@ -75,13 +75,13 @@ void printVector(double x, double y, double z, String header = "") {
   display.display();
 }
 
-Vector3 zeroOffsetAccel;
-Vector3 acceleration() {
-  return Vector3(a.acceleration.x - zeroOffsetAccel.x, a.acceleration.y - zeroOffsetAccel.y, a.acceleration.z - zeroOffsetAccel.z);
+Vector3<float> zeroOffsetAccel;
+Vector3<float> acceleration() {
+  return Vector3<float>(a.acceleration.x - zeroOffsetAccel.x, a.acceleration.y - zeroOffsetAccel.y, a.acceleration.z - zeroOffsetAccel.z);
 }
 
 void calibrate() {
-  double x, y, z = 0.0;
+  Vector3<float> avg = Vector3<float>(0.0, 0.0, 0.0);
   int nSamples = 100;
 
   Serial.println("Calibrating...");
@@ -90,26 +90,27 @@ void calibrate() {
     if (mpu.getEvent(&a, &g, &temp))
     {
       Serial.print(mpu.getEvent(&a, &g, &temp));
-      x += a.acceleration.x;
-      y += a.acceleration.y;
-      z += a.acceleration.z;
+      avg.x += a.acceleration.x;
+      avg.y += a.acceleration.y;
+      avg.z += a.acceleration.z;
     }
     
     delayMicroseconds(10);
   }
-
-  x /= (float)nSamples;
-  y /= (float)nSamples;
-  z /= (float)nSamples;
+// Vector average calculated from sampled vector sum
+  avg.x /= (double)nSamples;
+  avg.z /= (double)nSamples;
+  avg.y /= (double)nSamples;
   
-  zeroOffsetAccel.x = x-0.0;
-  zeroOffsetAccel.y = y-0.0;
-  zeroOffsetAccel.z = z-9.81;
+  Vector3<float> error = Vector3<float>(avg.x-0.0, avg.y-0.0, avg.z-9.81);
+  zeroOffsetAccel.x = error.x;
+  zeroOffsetAccel.y = error.y;
+  zeroOffsetAccel.z = error.z;
 
-  Vector3 calib = acceleration();
+  Vector3<float> preciseAccel = acceleration();
   printVector(zeroOffsetAccel.x, zeroOffsetAccel.y, zeroOffsetAccel.z, "Zero Offset");
   printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Before: ");
-  printVector(calib.x, calib.y, calib.z, "Calibrated: ");
+  printVector(preciseAccel.x, preciseAccel.y, preciseAccel.z, "Calibrated: ");
   delay(5000);
 }
 
@@ -134,7 +135,7 @@ void mpuSetup()
   }
 }
 
-Vector3 accel;
+Vector3<float> accel;
 void mpuLoop() 
 {
   static int count = 0;
