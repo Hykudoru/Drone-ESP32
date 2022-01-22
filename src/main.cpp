@@ -10,27 +10,26 @@
 #include <Adafruit_Sensor.h>
 #include <Drone.h>
 
-double totalTime = 0.0;
+double totalTime = 0.0; // seconds
 double deltaTime = 0.0;//time difference (in seconds) between each loop;
-void timeLoop() {
+void _timeLoop() {
   static unsigned long prevTime = 0.0;
   
-  totalTime = millis()/1000.0;
-  deltaTime = (millis() - prevTime)/1000.0;
-
-  Serial.print("deltaTime: ");Serial.println(deltaTime);
-  Serial.print("Time: ");Serial.println(totalTime);
-
+  totalTime = millis()/1000.0; // seconds
+  deltaTime = (millis() - prevTime)/1000.0;// delta seconds
   prevTime = millis();//update time
+
+  Serial.print("deltaTime (sec): ");Serial.println(deltaTime);
+  Serial.print("Time (sec): ");Serial.println(totalTime);
 }
 
-void delay(double interval, void(*callback)(void))
+void delay(double milliSec, void(*callback)(void))
 {
   static unsigned long t = 0.0;
   //delay
-  if ((totalTime - t) >= interval/1000.0)
+  if ((millis() - t) >= milliSec)
   {
-    t = totalTime; //reset timer
+    t = millis(); //reset timer
     callback();
     Serial.println(String("----------------------CALLBACK : t:")+ t/1000.0);
   }
@@ -55,65 +54,70 @@ pointerFunction ptrMode;
 
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 Adafruit_MPU6050 mpu;
-Drone drone = Drone();
 sensors_event_t a, g, temp;
+Drone drone = Drone();
 
-
-void printVector(double x, double y, double z, String header = "") {
+void printVector(Vector3<float> vec, String header = "") {
   Serial.println("");
 
-  Serial.println(header); 
-  Serial.print(x); Serial.print(", ");
-  Serial.print(y); Serial.print(", ");
-  Serial.println(z); 
+  Serial.print(header); 
+  Serial.print(vec.x); Serial.print(", ");
+  Serial.print(vec.y); Serial.print(", ");
+  Serial.println(vec.z); 
 
-  display.println(header); 
-  display.print(x); display.print(", ");
-  display.print(y); display.print(", ");
-  display.println(z); 
+  display.print(header); 
+  display.print(vec.x); display.print(", ");
+  display.print(vec.y); display.print(", ");
+  display.println(vec.z); 
 
   display.display();
 }
 
+Vector3<float> accelCal;
+Vector3<float> gyroCal;
 Vector3<float> zeroOffsetAccel;
-Vector3<float> acceleration() {
-  return Vector3<float>(a.acceleration.x - zeroOffsetAccel.x, a.acceleration.y - zeroOffsetAccel.y, a.acceleration.z - zeroOffsetAccel.z);
-}
-
+Vector3<float> zeroOffsetGyro;
 void calibrate() {
-  Vector3<float> avg = Vector3<float>(0.0, 0.0, 0.0);
-  int nSamples = 100;
-
+  Vector3<float> avgAccel = Vector3<float>(0.0, 0.0, 0.0);
+  Vector3<float> avgGyro = Vector3<float>(0.0, 0.0, 0.0);
+  Vector3<float> errorAccel;
+  Vector3<float> errorGyro;
+  int nSamples = 1000;
+  
   Serial.println("Calibrating...");
+  mpu.getEvent(&a, &g, &temp);
   for (size_t i = 0; i < nSamples; i++) 
   {
     if (mpu.getEvent(&a, &g, &temp))
-    {
-      Serial.print(mpu.getEvent(&a, &g, &temp));
-      avg.x += a.acceleration.x;
-      avg.y += a.acceleration.y;
-      avg.z += a.acceleration.z;
+    { 
+      avgAccel.x += a.acceleration.x;
+      avgAccel.y += a.acceleration.y;
+      avgAccel.z += a.acceleration.z;
+
+      avgGyro += g.gyro.v;
     }
-    
-    delayMicroseconds(10);
+    delay(2);
   }
-// Vector average calculated from sampled vector sum
-  avg.x /= (double)nSamples;
-  avg.z /= (double)nSamples;
-  avg.y /= (double)nSamples;
+
+  // Vector average calculated from sampled vector sum
+  avgAccel.x /= (double)nSamples;
+  avgAccel.z /= (double)nSamples;
+  avgAccel.y /= (double)nSamples;
   
-  Vector3<float> error = Vector3<float>(avg.x-0.0, avg.y-0.0, avg.z-9.81);
-  zeroOffsetAccel.x = error.x;
-  zeroOffsetAccel.y = error.y;
-  zeroOffsetAccel.z = error.z;
+  zeroOffsetAccel.x = avgAccel.x;
+  zeroOffsetAccel.y = avgAccel.y;
+  zeroOffsetAccel.z = avgAccel.z;
 
-  Vector3<float> preciseAccel = acceleration();
-  printVector(zeroOffsetAccel.x, zeroOffsetAccel.y, zeroOffsetAccel.z, "Zero Offset");
-  printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Before: ");
-  printVector(preciseAccel.x, preciseAccel.y, preciseAccel.z, "Calibrated: ");
-  delay(5000);
+  avgGyro /= (double)nSamples;
+  zeroOffsetGyro = avgGyro;
+
+  //error = Vector3<float>(abs(avg.x), abs(avg.y), abs(avg.z-9.81));
+  // accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
+  // gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
+
+  printVector(zeroOffsetAccel, "Zero Offset Accel: ");
+  printVector(zeroOffsetGyro, "Zero Offset Gyro: ");
 }
-
 
 void mpuSetup() 
 {
@@ -126,29 +130,28 @@ void mpuSetup()
   }
   else {
     Serial.println("MPU detected!");
-    Serial.println(mpu.getAccelerometerRange());
-    Serial.println(mpu.getGyroRange());
-    Serial.println(mpu.getFilterBandwidth());
-    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    //mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpu.getAccelerometerSensor()->printSensorDetails();
+    mpu.getGyroSensor()->printSensorDetails();
   }
+  delay(1000);
+
+  calibrate();
+  
+  delay(1000);
 }
 
-Vector3<float> accel;
-void mpuLoop() 
+void _mpuLoop() 
 {
-  static int count = 0;
   display.clearDisplay();
   display.setCursor(0, 0);
-
+//delay(1000.0, calibrate);
   if (mpu.getEvent(&a, &g, &temp)) {
-    count++;
-    Serial.printf("mpu.getEvent %d times \n", count);
-    accel = acceleration();
-    //accel.x *= deltaTime;
-    //accel.y *= deltaTime;
-    //accel.z *= deltaTime;
+    accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
+    gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
+    
   }
 }
 
@@ -157,9 +160,8 @@ void mode_1() {
   display.setCursor(0, 0);
   display.println("Mode 1");
 
-  printVector(a.acceleration.x, a.acceleration.y, a.acceleration.z, "Acceleration (m/s^2)");
-  printVector(accel.x, accel.y, accel.z, "Calibrated Acceleration");
-  printVector(accel.x*deltaTime, accel.y*deltaTime, accel.z*deltaTime, "Calibrated Acceleration * delta time");
+  printVector(accelCal, "Acceleration (m/s^2)");
+  printVector(gyroCal, "Gyro (rad/s)");
           
   display.display();
 }
@@ -169,7 +171,7 @@ void mode_2() {
   display.setCursor(0, 0);
   display.println("Mode 2");
 
-  printVector(g.gyro.x, g.gyro.y, g.gyro.z, "Gyro (rad/s)");
+  // printVector(Vector3<float>(g.gyro.v), "Gyro (rad/s)");
 
   display.display();
 }
@@ -182,6 +184,7 @@ void mode_3() {
   calibrate();
 
   display.display();
+  delay(5000);
 }
 
 
@@ -194,27 +197,18 @@ void debug() {
   Serial.println(l);
   Serial.println(f);
   Serial.println(d);
-  Serial.println(String("millis()/1000.0: ")+millis()/1000.0);
-  Serial.println(String("millis()/1000.0: ")+millis()/1000.0);
 
-  Serial.println(String("Status: ")+a.acceleration.status);
-  Serial.println(String("Heading: ")+a.acceleration.heading);
-  Serial.println(String("Voltage: ")+a.voltage);
-  Serial.println(String("Current: ")+a.current);
-  Serial.println(String("Distance: ")+a.distance+" cm");
-  Serial.println(String("Clock: ")+mpu.getClock()+"");
-  Serial.println(String("Cycle Rate: ")+mpu.getCycleRate()+"");
-  Serial.println(String("Sample Rate Divisor: ")+mpu.getSampleRateDivisor()+"");
-  Serial.println(String("Filter Bandwidth: ")+mpu.getFilterBandwidth()+"");
-  Serial.println(String("Accelerometer Range: ")+mpu.getAccelerometerRange()+"");
-  delay(100.0);
+  mpu.getAccelerometerSensor()->printSensorDetails();
+  mpu.getGyroSensor()->printSensorDetails();
+  delay(10000);
 }
 void test()
 {
   Serial.println("Test");
 }
 
-void inputLoop()
+int range = 0;
+void _inputLoop()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
@@ -223,19 +217,52 @@ void inputLoop()
   if(Serial.available())
   {
     char c = Serial.read();
-    Serial.print("Serial.read() : "); 
     Serial.println(c);
     
     if (c == 'd')
     {
       ptrMode = &debug;// or debug(); delay(1000);
     }
-    if (c == 'c')
+    if (c == '3')
     {
-      ptrMode = &calibrate;
+      ptrMode = &mode_3;
     }
     if (c == 'p') {
-      delay(5000);
+      ptrMode = NULL;
+    }
+    if (c == '+' || c == '-')
+    {
+      if (c == '+') {
+        range++;
+      }
+      else if (c == '-') {
+        range--;
+      }
+      //clamp range
+      if (range > 3) {
+          range = 3;
+        }
+      else if (range < 0) {
+        range = 0;
+      }
+    
+      switch (range)
+      {
+      case 0:
+        mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+        break;
+      case 1:
+        mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+        break;
+        case 2:
+        mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+        break;
+        case 3:
+        mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+        break;
+      default:
+        break;
+      }
     }
   }
 }
@@ -270,25 +297,18 @@ void setup()
   ptrMode = &mode_1;  
   
   mpuSetup();//drone.setup();
-  calibrate();
 
   delay(500);
   display.clearDisplay();
 }
- 
+
+Vector3<float> v; 
 void loop() 
 {
-  static int count = 0;
-  count++;
-  Serial.printf("-----------loop() count:  %d times \n", count);
-  
-  timeLoop();
-  mpuLoop();
-  inputLoop();
-
-  (*ptrMode)();
-
-  delay(500, test);
-  delay(500, test);
-  delay(500, test);
+  _timeLoop();
+  _inputLoop();
+  _mpuLoop();
+  if (ptrMode) {
+    (*ptrMode)();
+  }
 }

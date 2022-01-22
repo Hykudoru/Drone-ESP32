@@ -34,6 +34,15 @@ struct Vector3
         return vectorDiff;
     }
 
+    Vector3 operator*(const T& scalar)
+    {
+        Vector3 scaledVector;
+        scaledVector.x = this->x * scalar;
+        scaledVector.y = this->y * scalar;
+        scaledVector.z = this->z * scalar;
+        return scaledVector;
+    }
+
     Vector3 operator+=(const Vector3& other)
     {
         this->x += other.x;

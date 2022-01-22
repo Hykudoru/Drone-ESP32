@@ -29,18 +29,20 @@
 //     float length = vec.magnitude();
 //     return new Vector3<double>(x/length, y/length, z/length);
 // }
+
+
+// float dotProduct(float a, float b, theta)
+// {
+//     return a*b*cos(theta);
+// }
 template <typename T>
 T dotProduct(Vector3<T> a, Vector3<T> b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-// float dotProduct(float a, float b, theta)
-// {
-//     return a*b*cos(theta);
-// }
-
 template <typename T>
+// Vector product A X B
 // Calcs unit vector perpendicular to both a and b vectors
 Vector3<T> crossProduct(Vector3<T> a, Vector3<T> b)
 {
@@ -61,13 +63,12 @@ Vector3<T> crossProduct(Vector3<T> a, Vector3<T> b)
      | a.x a.y a.z |
      | b.x b.y b.z |
     */
-    //Vector product A X B
+    
     Vector3<T> u;
     u.x = (a.y*b.z - a.z*b.y); //i 
     u.y = -(a.x*b.z) + (a.z*b.x);// -(a.x*b.z - a.z*b.x), //-j
     u.z = (a.x*b.y - a.y*b.x); //k
-    /* To check is orthogonal:
-    bool isPerpendicular = dotProduct(u, a) == 0 && dotProduct(u, b) == 0;
+    /* To check is orthogonal: bool isPerpendicular = dotProduct(u, a) == 0 && dotProduct(u, b) == 0;
     */
     return u; 
 }
