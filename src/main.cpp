@@ -8,6 +8,8 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include <Adafruit_MotorShield.h>
+#include <utility/Adafruit_MS_PWMServoDriver.h>
 #include <Drone.h>
 
 double totalTime = 0.0; // seconds
@@ -56,6 +58,11 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 Adafruit_MPU6050 mpu;
 sensors_event_t a, g, temp;
 Drone drone = Drone();
+Adafruit_MotorShield motorShield = Adafruit_MotorShield();
+Adafruit_DCMotor *m1 = motorShield.getMotor(1);
+Adafruit_DCMotor *m2 = motorShield.getMotor(2);
+Adafruit_DCMotor *m3 = motorShield.getMotor(3);
+Adafruit_DCMotor *m4 = motorShield.getMotor(4);
 
 void printVector(Vector3<float> vec, String header = "") {
   Serial.println("");
@@ -297,7 +304,7 @@ void setup()
   ptrMode = &mode_1;  
   
   mpuSetup();//drone.setup();
-
+  motorShield.begin();
   delay(500);
   display.clearDisplay();
 }
@@ -308,6 +315,16 @@ void loop()
   _timeLoop();
   _inputLoop();
   _mpuLoop();
+  uint8_t motorSpeed = 255/2;//test
+  m1->setSpeed(50);
+  delay(1000);
+  m1->setSpeed(128);
+  delay(1000);
+  m1->setSpeed(240);
+  delay(1000);
+  m1->setSpeed(0);
+  delay(1000);
+  m1->run(FORWARD);
   if (ptrMode) {
     (*ptrMode)();
   }
