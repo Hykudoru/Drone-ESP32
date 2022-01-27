@@ -57,12 +57,21 @@ pointerFunction ptrMode;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 Adafruit_MPU6050 mpu;
 sensors_event_t a, g, temp;
-Drone drone = Drone();
+
 Adafruit_MotorShield motorShield = Adafruit_MotorShield();
 Adafruit_DCMotor *m1 = motorShield.getMotor(1);
 Adafruit_DCMotor *m2 = motorShield.getMotor(2);
 Adafruit_DCMotor *m3 = motorShield.getMotor(3);
 Adafruit_DCMotor *m4 = motorShield.getMotor(4);
+
+int m1Speed = 0;
+int m2Speed = 0;
+int m3Speed = 0;
+int m4Speed = 0;
+const int motorMinSpeed = 0;
+const int motorMaxSpeed = 255;
+
+Drone drone = Drone();
 
 void printVector(Vector3<float> vec, String header = "") {
   Serial.println("");
@@ -78,6 +87,17 @@ void printVector(Vector3<float> vec, String header = "") {
   display.println(vec.z); 
 
   display.display();
+}
+int clamp(int &val, int min, int max) {
+  if (val > max) 
+  {
+    val = max;
+  }
+  else if (val < min) {
+    val = min;
+  }
+  
+  return val;
 }
 
 Vector3<float> accelCal;
@@ -194,27 +214,6 @@ void mode_3() {
   delay(5000);
 }
 
-
-void debug() {
-  unsigned long ul = millis();
-  long l = millis();
-  float f = millis();
-  double d = millis();
-  Serial.println(ul);
-  Serial.println(l);
-  Serial.println(f);
-  Serial.println(d);
-
-  mpu.getAccelerometerSensor()->printSensorDetails();
-  mpu.getGyroSensor()->printSensorDetails();
-  delay(10000);
-}
-void test()
-{
-  Serial.println("Test");
-}
-
-int range = 0;
 void _inputLoop()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
@@ -226,54 +225,36 @@ void _inputLoop()
     char c = Serial.read();
     Serial.println(c);
     
-    if (c == 'd')
-    {
-      ptrMode = &debug;// or debug(); delay(1000);
-    }
-    if (c == '3')
-    {
-      ptrMode = &mode_3;
-    }
-    if (c == 'p') {
-      ptrMode = NULL;
-    }
     if (c == '+' || c == '-')
     {
       if (c == '+') {
-        range++;
+        ++m1Speed;
+        ++m2Speed;
+        ++m3Speed;
+        ++m4Speed;
       }
-      else if (c == '-') {
-        range--;
+      else {
+        --m1Speed;
+        --m2Speed;
+        --m3Speed;
+        --m4Speed;
       }
       //clamp range
-      if (range > 3) {
-          range = 3;
-        }
-      else if (range < 0) {
-        range = 0;
-      }
-    
-      switch (range)
-      {
-      case 0:
-        mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
-        break;
-      case 1:
-        mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
-        break;
-        case 2:
-        mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-        break;
-        case 3:
-        mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-        break;
-      default:
-        break;
-      }
+      clamp(m1Speed, motorMinSpeed, motorMaxSpeed);
+      clamp(m2Speed, motorMinSpeed, motorMaxSpeed);
+      clamp(m3Speed, motorMinSpeed, motorMaxSpeed);
+      clamp(m4Speed, motorMinSpeed, motorMaxSpeed);
+
+      Serial.println("-----------");
+      Serial.println(String("Motor 1: ")+m1Speed);
+      Serial.println(String("Motor 2: ")+m2Speed);
+      Serial.println(String("Motor 3: ")+m3Speed);
+      Serial.println(String("Motor 4: ")+m4Speed);
+      Serial.println("-----------");
+      delay(10);
     }
   }
 }
-
 
 bool DEBUGGING = true;
 void setup() 
@@ -316,15 +297,34 @@ void loop()
   _inputLoop();
   _mpuLoop();
   uint8_t motorSpeed = 255/2;//test
-  m1->setSpeed(50);
-  delay(1000);
-  m1->setSpeed(128);
-  delay(1000);
-  m1->setSpeed(240);
-  delay(1000);
-  m1->setSpeed(0);
-  delay(1000);
+
+  if (!m1) {
+    m1 = motorShield.getMotor(1);
+    if (!m1) {
+      //pause();
+      return;
+    }
+  }
+
+/*
+for (size_t i = 0; i <= 5; i++)
+{
+  m1->setSpeed(51 * i);
   m1->run(FORWARD);
+  delay(1000);
+
+  // m1->setSpeed(0);
+  // //m1->run(BACKWARD);
+  // delay(1000);
+
+  m1->setSpeed(51 * i);
+  m1->run(BACKWARD);
+  delay(1000);
+}
+*/
+ m1->setSpeed(m1Speed);
+  m1->run(BACKWARD);
+ 
   if (ptrMode) {
     (*ptrMode)();
   }

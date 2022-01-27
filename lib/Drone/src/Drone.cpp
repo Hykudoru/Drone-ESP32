@@ -5,7 +5,6 @@
 #include <Adafruit_Sensor.h>
 #include "Drone.h"
 
-Adafruit_SSD1306 screen = Adafruit_SSD1306(128, 32, &Wire);
 // Vector3 Drone::GetPosition() 
 // {
 //     return position;
@@ -30,7 +29,7 @@ void Drone::calibrate()
     Serial.println("Calibrate()");
 }
 
-void Drone::setup() 
+void Drone::init() 
 {
   if (!mpu.begin()) {
     Serial.println("MPU not detected!");
@@ -44,7 +43,7 @@ void Drone::setup()
   }
 }
 
-void Drone::loop() 
+void Drone::update() 
 {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);

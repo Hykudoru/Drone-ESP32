@@ -30,10 +30,10 @@
 //     return new Vector3<double>(x/length, y/length, z/length);
 // }
 
-
-// float dotProduct(float a, float b, theta)
+// template <typename T>
+// T dotProduct(T a, T b, theta)
 // {
-//     return a*b*cos(theta);
+//     return a.normalized*b.normalized*cos(theta);
 // }
 template <typename T>
 T dotProduct(Vector3<T> a, Vector3<T> b)
@@ -42,7 +42,7 @@ T dotProduct(Vector3<T> a, Vector3<T> b)
 }
 
 template <typename T>
-// Vector product A X B
+// A X B
 // Calcs unit vector perpendicular to both a and b vectors
 Vector3<T> crossProduct(Vector3<T> a, Vector3<T> b)
 {
