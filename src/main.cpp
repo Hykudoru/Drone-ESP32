@@ -6,6 +6,7 @@
 //#include <WiFiScan.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <SparkFun_Qwiic_Joystick_Arduino_Library.h>
 
 const int I2C_ADDR = 0x3C; // Can be shared with other I2C devices
 const int BUTTON_A = 15;//GPIO 15 or A8
@@ -22,6 +23,9 @@ const int BUTTON_C = 14;
 typedef void (*pointerFunction)(void);
 pointerFunction pfunc;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
+
+JOYSTICK joystick_1;
+JOYSTICK joystick_2;
 
 //timer
 void mode_1() {
@@ -124,6 +128,12 @@ void setup() {
   WiFi.disconnect();//Disconnect incase was connected to AP
 
   pfunc = &mode_1;  
+
+  while(!joystick_1.begin())
+  {
+    Serial.println("Joystick not detected.");
+    delay(1000);
+  }
 }
 
 
