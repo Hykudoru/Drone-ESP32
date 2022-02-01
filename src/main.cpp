@@ -146,11 +146,19 @@ void loop() {
   (*pfunc)();
 
   
-  
-  
-  
- 
+  uint16_t x = joystick_1.getHorizontal();
+  uint16_t y = joystick_1.getVertical();
 
+  // fix dir of x axis
+  if (x != 514)
+  {
+    x = 1023 - x;
+  }
+
+  Serial.println(String("Joystick_1 X: ")+x);
+  Serial.println(String("Joystick_1 Y: ")+y);
+  Serial.println(String("Joystick_1 button: ")+joystick_1.getButton());
+  
   /*
   
   */
