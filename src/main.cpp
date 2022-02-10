@@ -14,7 +14,7 @@
 
 double totalTime = 0.0; // seconds
 double deltaTime = 0.0;//time difference (in seconds) between each loop;
-void _timeLoop() {
+void timeUpdate() {
   static unsigned long prevTime = 0.0;
   
   totalTime = millis()/1000.0; // seconds
@@ -64,12 +64,13 @@ Adafruit_DCMotor *m2 = motorShield.getMotor(2);
 Adafruit_DCMotor *m3 = motorShield.getMotor(3);
 Adafruit_DCMotor *m4 = motorShield.getMotor(4);
 
+const byte motorMinSpeed = 0;
+const byte motorMaxSpeed = 255;
+
 int m1Speed = 0;
 int m2Speed = 0;
 int m3Speed = 0;
 int m4Speed = 0;
-const int motorMinSpeed = 0;
-const int motorMaxSpeed = 255;
 
 Drone drone = Drone();
 
@@ -88,6 +89,7 @@ void printVector(Vector3<float> vec, String header = "") {
 
   display.display();
 }
+
 int clamp(int &val, int min, int max) {
   if (val > max) 
   {
@@ -104,6 +106,7 @@ Vector3<float> accelCal;
 Vector3<float> gyroCal;
 Vector3<float> zeroOffsetAccel;
 Vector3<float> zeroOffsetGyro;
+
 void calibrate() {
   Vector3<float> avgAccel = Vector3<float>(0.0, 0.0, 0.0);
   Vector3<float> avgGyro = Vector3<float>(0.0, 0.0, 0.0);
@@ -170,7 +173,7 @@ void mpuSetup()
   delay(1000);
 }
 
-void _mpuLoop() 
+void mpuUpdate() 
 {
   display.clearDisplay();
   display.setCursor(0, 0);
@@ -214,7 +217,7 @@ void mode_3() {
   delay(5000);
 }
 
-void _inputLoop()
+void inputUpdate()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
@@ -222,12 +225,35 @@ void _inputLoop()
 
   if(Serial.available())
   {
-    char c = Serial.read();
-    Serial.println(c);
+    char ch = Serial.read();
+    Serial.println(ch);
     
-    if (c == '+' || c == '-')
+    // Pressing 1 - 4 starts or stops coresponding motor
+    switch (ch)
     {
-      if (c == '+') {
+    case '1':
+      m1Speed = (byte)(m1Speed != motorMaxSpeed) * motorMaxSpeed;
+      m1->setSpeed(m1Speed);
+      break;
+    case '2':
+      m2Speed = (byte)(m2Speed != motorMaxSpeed) * motorMaxSpeed;
+      m2->setSpeed(m2Speed);
+      break;
+    case '3':  
+      m3Speed = (byte)(m3Speed != motorMaxSpeed) * motorMaxSpeed;
+      m3->setSpeed(m3Speed);
+      break;
+    case '4':  
+      m4Speed = (byte)(m4Speed != motorMaxSpeed) * motorMaxSpeed;
+      m4->setSpeed(m4Speed);
+      break;
+    default:
+      break;
+    }
+
+    if (ch == '+' || ch == '-')
+    {
+      if (ch == '+') {
         ++m1Speed;
         ++m2Speed;
         ++m3Speed;
@@ -263,7 +289,7 @@ void setup()
   if (DEBUGGING) {
     while (!Serial)
     {
-      ;
+      delay(100);
     }
   }
   
@@ -293,9 +319,9 @@ void setup()
 Vector3<float> v; 
 void loop() 
 {
-  _timeLoop();
-  _inputLoop();
-  _mpuLoop();
+  timeUpdate();
+  inputUpdate();
+  mpuUpdate();
   uint8_t motorSpeed = 255/2;//test
 
   if (!m1) {
@@ -322,10 +348,19 @@ for (size_t i = 0; i <= 5; i++)
   delay(1000);
 }
 */
- m1->setSpeed(m1Speed);
-  m1->run(BACKWARD);
+
+  m1->setSpeed(m1Speed);
+  m1->setSpeed(m2Speed);
+  m1->setSpeed(m3Speed);
+  m1->setSpeed(m4Speed);
+  m1->run(FORWARD);
+  m2->run(FORWARD);
+  m3->run(FORWARD);
+  m4->run(FORWARD);
  
   if (ptrMode) {
     (*ptrMode)();
   }
+
+  delay(2);
 }
