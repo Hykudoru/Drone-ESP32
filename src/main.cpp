@@ -26,9 +26,75 @@ pointerFunction pfunc;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 
 QWIICMUX mux;
-JOYSTICK joystick;
-int joystickZeroOffsetX = 0;
-int joystickZeroOffsetY = 0;
+JOYSTICK activeJoystick;
+
+class MuxJoystick
+{
+  float xZeroOffset;
+  float yZeroOffset;
+
+  public:
+
+  String nameID = "";
+  float x;
+  float y;
+  
+  MuxJoystick(String nameID = "Generic")
+  {
+    this->nameID = nameID;
+    this->x = 0;
+    this->y = 0;
+  }
+
+  ~MuxJoystick();
+
+  void Calibrate(int muxPort) //calculate zero offset when centered
+  {
+    mux.enablePort(muxPort);
+    Serial.println(mux.getPort());
+    Serial.println("(Joystick calibration starting in 4 seconds...)");//joysticks[muxPort].nameID);
+    delay(1000);
+    Serial.println("(Joystick calibration starting in 3 seconds...)");//joysticks[muxPort].nameID);
+    delay(1000);
+    Serial.println("(Joystick calibration starting in 2 seconds...)");//joysticks[muxPort].nameID);
+    delay(1000);
+    Serial.println("(Joystick calibration starting in 1 seconds...)");//joysticks[muxPort].nameID);
+    delay(1000);
+    Serial.println("Calibrating Joystick...");//joysticks[muxPort].nameID);
+
+    int nSamples = 10;
+    float x = 0;
+    float y = 0;
+    int i = 0;
+    while(i++ < nSamples)
+    {
+      x += activeJoystick.getHorizontal();//was .xZeroOffset +=
+      y += activeJoystick.getVertical();// was .yZeroOffset +=
+      
+      delay(10);
+    }
+    
+    xZeroOffset = (x/(float)nSamples);//avg
+    yZeroOffset = (y/(float)nSamples);//avg
+
+    mux.disablePort(muxPort);
+    Serial.println(String("Joystick calibrated. Zero offset = ")+"X:"+xZeroOffset+", Y:"+yZeroOffset);//joysticks[muxPort].nameID);
+
+
+  }
+  //Untested
+  static void Swap(MuxJoystick joysticks[2])
+  {
+    MuxJoystick* tmp;// might need to save copy instead of pointer :/
+    tmp = &joysticks[0];  
+    joysticks[0] = joysticks[1];
+    joysticks[1] = *tmp;
+    free(tmp);
+  }
+};
+
+MuxJoystick joysticks[2] {MuxJoystick(), MuxJoystick()};
+
 // JOYSTICK joystick_1;
 // JOYSTICK joystick_2;
 
@@ -109,21 +175,13 @@ void mode_3(){
   display.display();
 }
 
-void calibrateJoystick(int muxPort)
-{
-    mux.enablePort(muxPort);
-    Serial.println(mux.getPort());
-    joystickZeroOffsetX = joystick.getHorizontal();
-    joystickZeroOffsetY = joystick.getVertical();
-    mux.disablePort(muxPort);
-}
-void muxJoystick(int muxPort) {
-  
+void GetMuxJoystick(int muxPort) {
+  Joystick *js = &joysticks[muxPort];
   mux.enablePort(muxPort);
   Serial.println(mux.getPort());
 
-  int x = joystick.getHorizontal() - joystickZeroOffsetX;
-  int y = joystick.getVertical() - joystickZeroOffsetY;
+  int x = activeJoystick.getHorizontal() - (*js).xZeroOffset;
+  int y = js.getVertical() - joystickZeroOffsetY;
 
   // fix dir of x axis
   if (x != 514)
@@ -168,8 +226,8 @@ void setup() {
   muxJoystick(1); // force read potentially bad init readings
   muxJoystick(2); // force read potentially bad init readings
 
-  //calibrateJoystick(1); // calculates joystick zero offset
-  //calibrateJoystick(2); // calculates joystick zero offset
+  calibrateJoystick(1); // calculates joystick zero offset
+  calibrateJoystick(2); // calculates joystick zero offset
 
   delay(100);
  }
@@ -177,14 +235,15 @@ void setup() {
 
 
 void loop() {
-
+  static int count;
+  count++;
   if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
   if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
   if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
   
   //(*pfunc)();
 
-  muxJoystick(1);
+  float joystickData_1[2] = muxJoystick(1);
   muxJoystick(2);
 
   delay(200);
