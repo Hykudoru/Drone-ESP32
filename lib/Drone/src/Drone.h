@@ -20,7 +20,7 @@ class Drone
 
         //inertial measurement unit
         Adafruit_MPU6050 mpu;
-        Adafruit_MotorShield motorShield = Adafruit_MotorShield();
+        Adafruit_MotorShield motorShield;
         void calibrate(); 
     public:
         //Motors
@@ -30,10 +30,10 @@ class Drone
         Adafruit_DCMotor *m4;// = motorShield.getMotor(4);
         const byte motorMinSpeed = 0;
         const byte motorMaxSpeed = 255;
-        int m1Speed = 0;
-        int m2Speed = 0;
-        int m3Speed = 0;
-        int m4Speed = 0;
+        byte m1Speed = 0;
+        byte m2Speed = 0;
+        byte m3Speed = 0;
+        byte m4Speed = 0;
         Drone();
         //Drone(Adafruit_MPU6050 *mpu);
         //Drone(Adafruit_MPU6050 *mpu, Adafruit_MotorShield *motorShield);

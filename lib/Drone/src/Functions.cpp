@@ -12,8 +12,31 @@
 #include <Vector.h>
 #include "Functions.h"
 
+byte clamp(byte &val, byte min, byte max) {
+  if (val > max) 
+  {
+    val = max;
+  }
+  else if (val < min) {
+    val = min;
+  }
+  
+  return val;
+}
 
 int clamp(int &val, int min, int max) {
+  if (val > max) 
+  {
+    val = max;
+  }
+  else if (val < min) {
+    val = min;
+  }
+  
+  return val;
+}
+
+float clamp(float &val, float min, float max) {
   if (val > max) 
   {
     val = max;

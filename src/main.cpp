@@ -91,7 +91,12 @@ void mode_2() {
   oled.setCursor(0, 0);
   oled.println("Mode 2");
 
-  // printVector(Vector3<float>(g.gyro.v), "Gyro (rad/s)");
+  Serial.println("-----------");
+      Serial.println(String("Motor 1: ")+drone.m1Speed);
+      Serial.println(String("Motor 2: ")+drone.m2Speed);
+      Serial.println(String("Motor 3: ")+drone.m3Speed);
+      Serial.println(String("Motor 4: ")+drone.m4Speed);
+      Serial.println("-----------");
 
   oled.display();
 }
@@ -118,24 +123,25 @@ void inputUpdate()
     char ch = Serial.read();
     Serial.println(ch);
     
+
+    if (ch == 'a') ptrMode = &mode_1;
+    if (ch == 'b') ptrMode = &mode_2;
+    if (ch == 'c') ptrMode = &mode_3;
+
     // Pressing 1 - 4 starts or stops coresponding motor
     switch (ch)
     {
     case '1':
-      drone.m1Speed = (byte)(drone.m1Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
-      drone.m1->setSpeed(drone.m1Speed);
+      drone.m1Speed = ((byte)(drone.m1Speed != drone.motorMaxSpeed)) * drone.motorMaxSpeed;
       break;
     case '2':
-      drone.m2Speed = (byte)(drone.m2Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
-      drone.m2->setSpeed(drone.m2Speed);
+      drone.m2Speed = ((byte)(drone.m2Speed != drone.motorMaxSpeed)) * drone.motorMaxSpeed;
       break;
     case '3':  
-      drone.m3Speed = (byte)(drone.m3Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
-      drone.m3->setSpeed(drone.m3Speed);
+      drone.m3Speed = ((byte)(drone.m3Speed != drone.motorMaxSpeed)) * drone.motorMaxSpeed;
       break;
     case '4':  
-      drone.m4Speed = (byte)(drone.m4Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
-      drone.m4->setSpeed(drone.m4Speed);
+      drone.m4Speed = ((byte)(drone.m4Speed != drone.motorMaxSpeed)) * drone.motorMaxSpeed;
       break;
     default:
       break;
@@ -155,6 +161,7 @@ void inputUpdate()
         --drone.m3Speed;
         --drone.m4Speed;
       }
+
       //clamp range
       clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
       clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
@@ -167,8 +174,8 @@ void inputUpdate()
       Serial.println(String("Motor 3: ")+drone.m3Speed);
       Serial.println(String("Motor 4: ")+drone.m4Speed);
       Serial.println("-----------");
-      delay(10);
     }
+    delay(10);
   }
 }
 

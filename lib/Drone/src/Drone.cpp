@@ -29,6 +29,7 @@ Drone::Drone(/* args */)
   angularVelocity = Vector3<float>();
   accelZeroOffset = Vector3<float>();
   gyroZeroOffset = Vector3<float>();
+  motorShield = Adafruit_MotorShield();
   m1 = motorShield.getMotor(1);
   m2 = motorShield.getMotor(2);
   m3 = motorShield.getMotor(3);
@@ -88,22 +89,23 @@ void Drone::calibrate()
 }
 
 void Drone::Init()
-{   
-  while (!mpu.begin())
+{
+  if (!mpu.begin())
   {
     Serial.println("MPU not detected!...");;
     delay(1000);
   }
-  Serial.println("MPU detected!");
-  mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-  mpu.getAccelerometerSensor()->printSensorDetails();
-  mpu.getGyroSensor()->printSensorDetails();
-  
-  delay(1000);
+  else {
+    Serial.println("MPU detected!");
+    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpu.getAccelerometerSensor()->printSensorDetails();
+    mpu.getGyroSensor()->printSensorDetails();
 
-  calibrate();
+    delay(1000);
+    calibrate();  
+  }
 
   motorShield.begin();
     
