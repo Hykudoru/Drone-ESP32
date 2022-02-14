@@ -1,9 +1,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <WiFi.h>
-//#include <WiFiClient.h>
-//#include <WiFiScan.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPU6050.h>
@@ -11,6 +8,7 @@
 #include <Adafruit_MotorShield.h>
 #include <utility/Adafruit_MS_PWMServoDriver.h>
 #include <Drone.h>
+#include <Functions.h>
 
 double totalTime = 0.0; // seconds
 double deltaTime = 0.0;//time difference (in seconds) between each loop;
@@ -53,167 +51,59 @@ int ACCEL_GYRO_ADDR = 0x68;
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
 
+#if defined(oled)
+#else
+Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
+#endif
+void duelPrint(Vector3<float> vec, String header = "")
+{
+    Serial.println("");
 
-Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
-Adafruit_MPU6050 mpu;
-sensors_event_t a, g, temp;
+    Serial.print(header); 
+    Serial.print(vec.x); Serial.print(", ");
+    Serial.print(vec.y); Serial.print(", ");
+    Serial.println(vec.z); 
 
-Adafruit_MotorShield motorShield = Adafruit_MotorShield();
-Adafruit_DCMotor *m1 = motorShield.getMotor(1);
-Adafruit_DCMotor *m2 = motorShield.getMotor(2);
-Adafruit_DCMotor *m3 = motorShield.getMotor(3);
-Adafruit_DCMotor *m4 = motorShield.getMotor(4);
+    oled.print(header); 
+    oled.print(vec.x); oled.print(", ");
+    oled.print(vec.y); oled.print(", ");
+    oled.println(vec.z); 
 
-const byte motorMinSpeed = 0;
-const byte motorMaxSpeed = 255;
-
-int m1Speed = 0;
-int m2Speed = 0;
-int m3Speed = 0;
-int m4Speed = 0;
+    oled.display();
+}
 
 Drone drone = Drone();
 
-void printVector(Vector3<float> vec, String header = "") {
-  Serial.println("");
-
-  Serial.print(header); 
-  Serial.print(vec.x); Serial.print(", ");
-  Serial.print(vec.y); Serial.print(", ");
-  Serial.println(vec.z); 
-
-  display.print(header); 
-  display.print(vec.x); display.print(", ");
-  display.print(vec.y); display.print(", ");
-  display.println(vec.z); 
-
-  display.display();
-}
-
-int clamp(int &val, int min, int max) {
-  if (val > max) 
-  {
-    val = max;
-  }
-  else if (val < min) {
-    val = min;
-  }
-  
-  return val;
-}
-
-Vector3<float> accelCal;
-Vector3<float> gyroCal;
-Vector3<float> zeroOffsetAccel;
-Vector3<float> zeroOffsetGyro;
-
-void calibrate() {
-  Vector3<float> avgAccel = Vector3<float>(0.0, 0.0, 0.0);
-  Vector3<float> avgGyro = Vector3<float>(0.0, 0.0, 0.0);
-  Vector3<float> errorAccel;
-  Vector3<float> errorGyro;
-  int nSamples = 1000;
-  
-  Serial.println("Calibrating...");
-  mpu.getEvent(&a, &g, &temp);
-  for (size_t i = 0; i < nSamples; i++) 
-  {
-    if (mpu.getEvent(&a, &g, &temp))
-    { 
-      avgAccel.x += a.acceleration.x;
-      avgAccel.y += a.acceleration.y;
-      avgAccel.z += a.acceleration.z;
-
-      avgGyro += g.gyro.v;
-    }
-    delay(2);
-  }
-
-  // Vector average calculated from sampled vector sum
-  avgAccel.x /= (double)nSamples;
-  avgAccel.z /= (double)nSamples;
-  avgAccel.y /= (double)nSamples;
-  
-  zeroOffsetAccel.x = avgAccel.x;
-  zeroOffsetAccel.y = avgAccel.y;
-  zeroOffsetAccel.z = avgAccel.z;
-
-  avgGyro /= (double)nSamples;
-  zeroOffsetGyro = avgGyro;
-
-  //error = Vector3<float>(abs(avg.x), abs(avg.y), abs(avg.z-9.81));
-  // accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
-  // gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
-
-  printVector(zeroOffsetAccel, "Zero Offset Accel: ");
-  printVector(zeroOffsetGyro, "Zero Offset Gyro: ");
-}
-
-void mpuSetup() 
-{
-  if (!mpu.begin()) {
-    Serial.println("MPU not detected!");
-    while (1)
-    {
-      yield();
-    }
-  }
-  else {
-    Serial.println("MPU detected!");
-    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-    //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-    mpu.getAccelerometerSensor()->printSensorDetails();
-    mpu.getGyroSensor()->printSensorDetails();
-  }
-  delay(1000);
-
-  calibrate();
-  
-  delay(1000);
-}
-
-void mpuUpdate() 
-{
-  display.clearDisplay();
-  display.setCursor(0, 0);
-//delay(1000.0, calibrate);
-  if (mpu.getEvent(&a, &g, &temp)) {
-    accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
-    gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
-    
-  }
-}
 
 void mode_1() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.println("Mode 1");
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println("Mode 1");
 
-  printVector(accelCal, "Acceleration (m/s^2)");
-  printVector(gyroCal, "Gyro (rad/s)");
+  duelPrint(drone.GetAcceleration(), "Acceleration (m/s^2)");
+  duelPrint(drone.GetAngularVelocity(), "Gyro (rad/s)");
           
-  display.display();
+  oled.display();
 }
 
 void mode_2() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.println("Mode 2");
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println("Mode 2");
 
   // printVector(Vector3<float>(g.gyro.v), "Gyro (rad/s)");
 
-  display.display();
+  oled.display();
 }
 
 void mode_3() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.println("Mode 3");
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println("Mode 3");
 
-  calibrate();
+  //calibrate();
 
-  display.display();
+  oled.display();
   delay(5000);
 }
 
@@ -232,20 +122,20 @@ void inputUpdate()
     switch (ch)
     {
     case '1':
-      m1Speed = (byte)(m1Speed != motorMaxSpeed) * motorMaxSpeed;
-      m1->setSpeed(m1Speed);
+      drone.m1Speed = (byte)(drone.m1Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
+      drone.m1->setSpeed(drone.m1Speed);
       break;
     case '2':
-      m2Speed = (byte)(m2Speed != motorMaxSpeed) * motorMaxSpeed;
-      m2->setSpeed(m2Speed);
+      drone.m2Speed = (byte)(drone.m2Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
+      drone.m2->setSpeed(drone.m2Speed);
       break;
     case '3':  
-      m3Speed = (byte)(m3Speed != motorMaxSpeed) * motorMaxSpeed;
-      m3->setSpeed(m3Speed);
+      drone.m3Speed = (byte)(drone.m3Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
+      drone.m3->setSpeed(drone.m3Speed);
       break;
     case '4':  
-      m4Speed = (byte)(m4Speed != motorMaxSpeed) * motorMaxSpeed;
-      m4->setSpeed(m4Speed);
+      drone.m4Speed = (byte)(drone.m4Speed != drone.motorMaxSpeed) * drone.motorMaxSpeed;
+      drone.m4->setSpeed(drone.m4Speed);
       break;
     default:
       break;
@@ -254,28 +144,28 @@ void inputUpdate()
     if (ch == '+' || ch == '-')
     {
       if (ch == '+') {
-        ++m1Speed;
-        ++m2Speed;
-        ++m3Speed;
-        ++m4Speed;
+        ++drone.m1Speed;
+        ++drone.m2Speed;
+        ++drone.m3Speed;
+        ++drone.m4Speed;
       }
       else {
-        --m1Speed;
-        --m2Speed;
-        --m3Speed;
-        --m4Speed;
+        --drone.m1Speed;
+        --drone.m2Speed;
+        --drone.m3Speed;
+        --drone.m4Speed;
       }
       //clamp range
-      clamp(m1Speed, motorMinSpeed, motorMaxSpeed);
-      clamp(m2Speed, motorMinSpeed, motorMaxSpeed);
-      clamp(m3Speed, motorMinSpeed, motorMaxSpeed);
-      clamp(m4Speed, motorMinSpeed, motorMaxSpeed);
+      clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+      clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+      clamp(drone.m3Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+      clamp(drone.m4Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
 
       Serial.println("-----------");
-      Serial.println(String("Motor 1: ")+m1Speed);
-      Serial.println(String("Motor 2: ")+m2Speed);
-      Serial.println(String("Motor 3: ")+m3Speed);
-      Serial.println(String("Motor 4: ")+m4Speed);
+      Serial.println(String("Motor 1: ")+drone.m1Speed);
+      Serial.println(String("Motor 2: ")+drone.m2Speed);
+      Serial.println(String("Motor 3: ")+drone.m3Speed);
+      Serial.println(String("Motor 4: ")+drone.m4Speed);
       Serial.println("-----------");
       delay(10);
     }
@@ -295,14 +185,14 @@ void setup()
   
   Serial.println("Setup...");
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.display();//displays initial adafruit image
-  display.clearDisplay();//clears initial adafruit image
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("Setup...");
-  display.display();
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.display();//displays initial adafruit image
+  oled.clearDisplay();//clears initial adafruit image
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(0, 0);
+  oled.println("Setup...");
+  oled.display();
   
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
@@ -310,27 +200,16 @@ void setup()
   
   ptrMode = &mode_1;  
   
-  mpuSetup();//drone.setup();
-  motorShield.begin();
+  drone.Init();
   delay(500);
-  display.clearDisplay();
+  oled.clearDisplay();
 }
 
-Vector3<float> v; 
 void loop() 
 {
   timeUpdate();
   inputUpdate();
-  mpuUpdate();
-  uint8_t motorSpeed = 255/2;//test
-
-  if (!m1) {
-    m1 = motorShield.getMotor(1);
-    if (!m1) {
-      //pause();
-      return;
-    }
-  }
+  drone.Update();
 
 /*
 for (size_t i = 0; i <= 5; i++)
@@ -349,14 +228,14 @@ for (size_t i = 0; i <= 5; i++)
 }
 */
 
-  m1->setSpeed(m1Speed);
-  m1->setSpeed(m2Speed);
-  m1->setSpeed(m3Speed);
-  m1->setSpeed(m4Speed);
-  m1->run(FORWARD);
-  m2->run(FORWARD);
-  m3->run(FORWARD);
-  m4->run(FORWARD);
+  drone.m1->setSpeed(drone.m1Speed);
+  drone.m1->setSpeed(drone.m2Speed);
+  drone.m1->setSpeed(drone.m3Speed);
+  drone.m1->setSpeed(drone.m4Speed);
+  drone.m1->run(FORWARD);
+  drone.m2->run(FORWARD);
+  drone.m3->run(FORWARD);
+  drone.m4->run(FORWARD);
  
   if (ptrMode) {
     (*ptrMode)();

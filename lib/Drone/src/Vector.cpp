@@ -1,5 +1,4 @@
 #include "Vector.h"
-
 // Vector3<double> Vector3<double>::scale(float scalar)
 // {
 //     x *= scalar;

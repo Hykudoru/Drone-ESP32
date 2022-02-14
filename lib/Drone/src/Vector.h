@@ -1,21 +1,17 @@
 #ifndef VECTOR_H
 #define VECTOR_H
-
 template <typename T>
-struct Vector3
+class Vector3
 {
+    public:
     T x;
     T y;
     T z;
 
     Vector3();
     Vector3(T xVal, T yVal, T zVal);
-    //Vector3(float xVal, float yVal, float zVal);
-    //Vector3(double xVal, double yVal, double zVal);
     Vector3(T xyz[]);
-    //Vector3(float xyz[]);
-    //Vector3(double xyz[]);
-    
+
     Vector3 operator+(const Vector3& other)
     {
         Vector3 vectorSum;
