@@ -1,18 +1,11 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <WiFi.h>
-//#include <WiFiClient.h>
-//#include <WiFiScan.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <SparkFun_Qwiic_Joystick_Arduino_Library.h>
 #include <SparkFun_I2C_Mux_Arduino_Library.h>
 
-const int I2C_ADDR = 0x3C; // Can be shared with other I2C devices
-const int BUTTON_A = 15;//GPIO 15 or A8
-const int BUTTON_B = 32;
-const int BUTTON_C = 14;
 
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
@@ -26,32 +19,80 @@ pointerFunction pfunc;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 
 QWIICMUX mux;
-JOYSTICK activeJoystick;
-//Controller
-class MuxJoystick
+JOYSTICK js;
+const int LEFT_JOYSTICK = 0;
+const int RIGHT_JOYSTICK = 1;
+
+class Joystick
 {
-  
-  float xZeroOffset;
-  float yZeroOffset;
-  
 public:
-  int muxPort;
-  String nameID = "";
-  float x;
-  float y;
+  int offsetX;
+  int offsetY;
   
-  MuxJoystick(int muxPort, String nameID = "Generic")
+  int x;
+  int y;
+  int muxPort;
+  Joystick(int muxPort)
   {
-    this->nameID = nameID;
-    this->x = 0;
-    this->y = 0;
+    offsetX = 0;
+    offsetY = 0;
+    muxPort = muxPort;
+  }
+  ~Joystick() {}
+
+  void Calibrate()
+  {
+    calibrateJoystick(this);
+  }
+  void Update()
+  {
+    readJoystick(this);
+  }
+};
+
+Joystick leftJoystick(LEFT_JOYSTICK);
+Joystick rightJoystick(RIGHT_JOYSTICK);
+
+// void calibrateJoystick(int muxPort)
+// {
+//     mux.enablePort(muxPort);
+//     Serial.println(mux.getPort());
+//     joystickZeroOffsetX = joystick.getHorizontal();
+//     joystickZeroOffsetY = joystick.getVertical();
+//     mux.disablePort(muxPort);
+// }
+void readJoystick(Joystick *joystick) 
+{
+  int muxPort = (*joystick).muxPort;
+  mux.enablePort(muxPort); Serial.println(mux.getPort());
+
+  uint16_t x = js.getHorizontal();//
+  uint16_t y = js.getVertical();//
+
+  // fix dir of x axis
+  if (x != 514)
+  {
+    x = 1023 - x;
   }
 
-  ~MuxJoystick();
+  (*joystick).x = x;
+  (*joystick).y = y;
 
-  void Calibrate() //calculate zero offset when centered
+  Serial.println(String("Joystick ")+muxPort+" X: "+x);
+  Serial.println(String("Joystick ")+muxPort+" Y: "+y);
+  Serial.println(String("Joystick ")+muxPort+" Button: "+js.getButton());
+
+  mux.disablePort(muxPort);
+
+  //return Vector3(x, y, joystick.getButton());
+}
+void calibrateJoystick(Joystick *joystick) //calculate zero offset when centered
   {
-    mux.enablePort(muxPort);
+    readJoystick(&leftJoystick);//(LEFT_JOYSTICK); // force read potentially bad init readings
+    readJoystick(&rightJoystick);// (RIGHT_JOYSTICK); // force read potentially bad init readings
+
+    //calibrate
+    mux.enablePort((*joystick).muxPort);
     Serial.println(mux.getPort());
     Serial.println("(Joystick calibration starting in 4 seconds...)");//joysticks[muxPort].nameID);
     delay(1000);
@@ -64,207 +105,58 @@ public:
     Serial.println("Calibrating Joystick...");//joysticks[muxPort].nameID);
 
     int nSamples = 10;
-    float x = 0;
-    float y = 0;
+    uint16_t x = 0;
+    uint16_t y = 0;
     int i = 0;
     while(i++ < nSamples)
     {
-      x += activeJoystick.getHorizontal();//was .xZeroOffset +=
-      y += activeJoystick.getVertical();// was .yZeroOffset +=
+      x += js.getHorizontal();//was .xZeroOffset +=
+      y += js.getVertical();// was .yZeroOffset +=
       delay(10);
     }
-    
-    xZeroOffset = (x/(float)nSamples);//avg
-    yZeroOffset = (y/(float)nSamples);//avg
+    // x axis
+    (*joystick).offsetX = (x/nSamples);//avg
+    // y axis
+    (*joystick).offsetY = (y/nSamples);//avg
 
-    mux.disablePort(muxPort);
-    Serial.println(String("Joystick calibrated. Zero offset = ")+"X:"+xZeroOffset+", Y:"+yZeroOffset);//joysticks[muxPort].nameID);
+    mux.disablePort((*joystick).muxPort);
+    Serial.println(String("Joystick calibrated. Zero offset = ")+"X:"+(*joystick).offsetX+", Y:"+(*joystick).offsetY);//joysticks[muxPort].nameID);
   }
-  //Untested
-  static void Swap(MuxJoystick joysticks[2])
-  {
-    MuxJoystick* tmp;// might need to save copy instead of pointer :/
-    tmp = &joysticks[0];  
-    joysticks[0] = joysticks[1];
-    joysticks[1] = *tmp;
-    free(tmp);
-  }
-  
-  void MuxJoystick::Update()
-  {
-    static int numJoysticks = 2;
 
-    for (int i = 0; i < numJoysticks; i++)
-    {
-      //check joystick
-      if (activeJoystick.isConnected() == false) {
-      while(!activeJoystick.isConnected())
-      {
-        Serial.println("Joystick disconnected. Waiting");
-        delay(500); 
-        // Or... send <0,0> but drone won't know we have no control. 
-        //Could send null value to notify drone that the joystick controller is disconnected and have the drone react accordingly (e.g. drone returns to homebase or lands))
-      }
-      // 2. Update current values
-      // 3. Send data packet to drone
-    }
-    
-    
-  }
-};
 
-MuxJoystick joysticks[2] {MuxJoystick(1), MuxJoystick(2)};
 
-// JOYSTICK joystick_1;
-// JOYSTICK joystick_2;
-
-//timer
-void mode_1() {
-  static double t = 0;
-
-  display.clearDisplay();
-
-  display.setCursor(0, 0);
-  display.write("Mode 1");
-
-  Serial.print("Time elapsed: ");
-  Serial.println(t);
-  
-  display.setCursor(0,32/2);
-  display.print("Time elapsed: ");
-  display.print(t);
-  display.print("s");
-  display.println("");
-  
-  t += 0.1;
-  delay(100);
-  yield();
-  display.display();
+bool Send()
+{
+  return 0;
 }
 
-void mode_2(){
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.println("Mode 2: Scanning WiFi");
-
-  int n = WiFi.scanNetworks();
-  
-  if (n == 0) {
-    display.println("0 networks found");
-  }
-  else {
-    for (byte i = 0; i < n; ++i)
-    {
-      display.print("SSID: ");
-      display.println(WiFi.SSID(i));
-      display.print("RSSI: ");
-      display.println(WiFi.RSSI(i));
-      display.print("encryptionType: ");
-      display.println(WiFi.encryptionType(i));
-      delay(10);
-      if (WiFi.isConnected()){
-        display.println("You're connected to WiFi");
-        break;
-      }
-    }
-  }
-
-  if (WiFi.isConnected()){
-    display.clearDisplay();
-    Serial.println("You're connected to WiFi");
-    display.display();
-    delay(500);
-    pfunc = &mode_1;
-    return;
-  }
-
-  display.display();
-  //default delay rescan
-  delay(5000);
-  yield();
-  
-}
-
-void mode_3(){
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.write("Mode 3");
-
-  delay(10);
-  yield();
-  display.display();
-}
-
-void GetMuxJoystick(int muxPort) {
-  MuxJoystick *joystick = &joysticks[muxPort];
-  mux.enablePort(muxPort);
-  Serial.println(mux.getPort());
-
-  int x = activeJoystick.getHorizontal() - (*joystick).xZeroOffset;
-  int y = activeJoystick.getVertical() - (*joystick).yZeroOffset;
-
-  // fix dir of x axis
-  if (x != 514)
-  {
-    x = 1023 - x;
-  }
-
-  Serial.println(String("Joystick ")+muxPort+" X: "+x);
-  Serial.println(String("Joystick ")+muxPort+" Y: "+y);
-  Serial.println(String("Joystick ")+muxPort+" Button: "+joystick.getButton());
-
-  mux.disablePort(muxPort);
-}
-
-void setup() {
+void setup() 
+{
   // put your setup code here, to run once:
   Serial.begin(BAUD_RATE);
-  Serial.println("");
-
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.display();
-  display.clearDisplay();
- 
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("Setup...");
-  display.display();
-  delay(500);
-
-  pfunc = &mode_1;  
-
-  // while(!joystick.begin())
-  // {
-  //   Serial.println("Joystick not detected.");
-  //   delay(1000);
-  // }
-
-  muxJoystick.begin();
+  js.begin();
   Wire.begin();
   mux.begin();
-  muxJoystick(1); // force read potentially bad init readings
-  muxJoystick(2); // force read potentially bad init readings
 
-  calibrateJoystick(1); // calculates joystick zero offset
-  calibrateJoystick(2); // calculates joystick zero offset
-
+  calibrateJoystick(&leftJoystick); // calculates joystick zero offset
+  calibrateJoystick(&rightJoystick); // calculates joystick zero offset
+ 
   delay(100);
  }
 
 
-
-void loop() {
-  static int count;
-  count++;
-  if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
-  if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
-  if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
+void loop() 
+{
+  // if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
+  // if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
+  // if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
   
   //(*pfunc)();
 
-  float joystickData_1[2] = muxJoystick(1);
-  muxJoystick(2);
+  leftJoystick.Update();
+  rightJoystick.Update();
+
+  Send();
 
   delay(200);
 }
