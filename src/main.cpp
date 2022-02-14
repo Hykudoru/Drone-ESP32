@@ -27,19 +27,20 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 
 QWIICMUX mux;
 JOYSTICK activeJoystick;
-
+//Controller
 class MuxJoystick
 {
+  
   float xZeroOffset;
   float yZeroOffset;
-
-  public:
-
+  
+public:
+  int muxPort;
   String nameID = "";
   float x;
   float y;
   
-  MuxJoystick(String nameID = "Generic")
+  MuxJoystick(int muxPort, String nameID = "Generic")
   {
     this->nameID = nameID;
     this->x = 0;
@@ -48,7 +49,7 @@ class MuxJoystick
 
   ~MuxJoystick();
 
-  void Calibrate(int muxPort) //calculate zero offset when centered
+  void Calibrate() //calculate zero offset when centered
   {
     mux.enablePort(muxPort);
     Serial.println(mux.getPort());
@@ -70,7 +71,6 @@ class MuxJoystick
     {
       x += activeJoystick.getHorizontal();//was .xZeroOffset +=
       y += activeJoystick.getVertical();// was .yZeroOffset +=
-      
       delay(10);
     }
     
@@ -79,8 +79,6 @@ class MuxJoystick
 
     mux.disablePort(muxPort);
     Serial.println(String("Joystick calibrated. Zero offset = ")+"X:"+xZeroOffset+", Y:"+yZeroOffset);//joysticks[muxPort].nameID);
-
-
   }
   //Untested
   static void Swap(MuxJoystick joysticks[2])
@@ -91,9 +89,31 @@ class MuxJoystick
     joysticks[1] = *tmp;
     free(tmp);
   }
+  
+  void MuxJoystick::Update()
+  {
+    static int numJoysticks = 2;
+
+    for (int i = 0; i < numJoysticks; i++)
+    {
+      //check joystick
+      if (activeJoystick.isConnected() == false) {
+      while(!activeJoystick.isConnected())
+      {
+        Serial.println("Joystick disconnected. Waiting");
+        delay(500); 
+        // Or... send <0,0> but drone won't know we have no control. 
+        //Could send null value to notify drone that the joystick controller is disconnected and have the drone react accordingly (e.g. drone returns to homebase or lands))
+      }
+      // 2. Update current values
+      // 3. Send data packet to drone
+    }
+    
+    
+  }
 };
 
-MuxJoystick joysticks[2] {MuxJoystick(), MuxJoystick()};
+MuxJoystick joysticks[2] {MuxJoystick(1), MuxJoystick(2)};
 
 // JOYSTICK joystick_1;
 // JOYSTICK joystick_2;
@@ -176,12 +196,12 @@ void mode_3(){
 }
 
 void GetMuxJoystick(int muxPort) {
-  Joystick *js = &joysticks[muxPort];
+  MuxJoystick *joystick = &joysticks[muxPort];
   mux.enablePort(muxPort);
   Serial.println(mux.getPort());
 
-  int x = activeJoystick.getHorizontal() - (*js).xZeroOffset;
-  int y = js.getVertical() - joystickZeroOffsetY;
+  int x = activeJoystick.getHorizontal() - (*joystick).xZeroOffset;
+  int y = activeJoystick.getVertical() - (*joystick).yZeroOffset;
 
   // fix dir of x axis
   if (x != 514)
@@ -220,7 +240,7 @@ void setup() {
   //   delay(1000);
   // }
 
-  joystick.begin();
+  muxJoystick.begin();
   Wire.begin();
   mux.begin();
   muxJoystick(1); // force read potentially bad init readings
