@@ -26,30 +26,80 @@ const int RIGHT_JOYSTICK = 1;
 class Joystick
 {
 public:
-  int offsetX;
-  int offsetY;
-  
-  int x;
-  int y;
+  int offsetX = 0;
+  int offsetY = 0;
+  int x = 0;
+  int y = 0;
+  int button = 0;
   int muxPort;
   Joystick(int muxPort)
   {
     offsetX = 0;
     offsetY = 0;
-    muxPort = muxPort;
+    this->muxPort = muxPort;
   }
   ~Joystick() {}
-
-  void Calibrate()
-  {
-    calibrateJoystick(this);
-  }
-  void Update()
-  {
-    readJoystick(this);
-  }
+  void Calibrate();
+  void Update();
 };
 
+void Joystick::Update()
+{
+  static int rawMidpoint = 514;
+  static int deadzoneOffset = 5;
+
+  mux.enablePort(muxPort); Serial.println(mux.getPort());
+  uint16_t rawX = js.getHorizontal();// 0 - 1023
+  uint16_t rawY = js.getVertical();// 0 - 1023
+
+  // Fix/reverse x axis
+  if (rawX != 514)
+  {
+    rawX = 1023 - rawX;
+  }
+
+  Serial.println(String("Joystick ")+muxPort+" RawX: "+x+", RawY: "+y+", Button: "+button);
+
+  // Map X-axis Range [-100, 100] 
+  if (rawX < (rawMidpoint - deadzoneOffset))
+  {
+    //left
+    x = -map(rawX, 0, 514, 100, 0);
+
+  }
+  else if (rawX > (rawMidpoint + deadzoneOffset))
+  {
+    //right
+    x = map(rawX, 514, 1023, 0, 100);
+  }
+  else {
+    x = 0;
+  }
+
+  // Map Y-axis Range [-100, 100] 
+  if (rawY < (rawMidpoint - deadzoneOffset))
+  {
+    //left
+    y = -map(rawY, 0, 514, 100, 0);
+
+  }
+  else if (rawY > (rawMidpoint + deadzoneOffset))
+  {
+    //right
+    y = map(rawY, 514, 1023, 0, 100);
+  }
+  else {
+    y = 0;
+  }
+  
+  
+  button = !js.getButton(); //Reversed so that button pressed = 1 else 0;
+
+  Serial.println(String("Joystick ")+muxPort+" X: "+x+", Y: "+y+", Button: "+button);
+  mux.disablePort(muxPort);
+
+  //return Vector3(x, y, joystick.getButton());
+}
 Joystick leftJoystick(LEFT_JOYSTICK);
 Joystick rightJoystick(RIGHT_JOYSTICK);
 
@@ -61,36 +111,9 @@ Joystick rightJoystick(RIGHT_JOYSTICK);
 //     joystickZeroOffsetY = joystick.getVertical();
 //     mux.disablePort(muxPort);
 // }
-void readJoystick(Joystick *joystick) 
-{
-  int muxPort = (*joystick).muxPort;
-  mux.enablePort(muxPort); Serial.println(mux.getPort());
 
-  uint16_t x = js.getHorizontal();//
-  uint16_t y = js.getVertical();//
-
-  // fix dir of x axis
-  if (x != 514)
-  {
-    x = 1023 - x;
-  }
-
-  (*joystick).x = x;
-  (*joystick).y = y;
-
-  Serial.println(String("Joystick ")+muxPort+" X: "+x);
-  Serial.println(String("Joystick ")+muxPort+" Y: "+y);
-  Serial.println(String("Joystick ")+muxPort+" Button: "+js.getButton());
-
-  mux.disablePort(muxPort);
-
-  //return Vector3(x, y, joystick.getButton());
-}
 void calibrateJoystick(Joystick *joystick) //calculate zero offset when centered
   {
-    readJoystick(&leftJoystick);//(LEFT_JOYSTICK); // force read potentially bad init readings
-    readJoystick(&rightJoystick);// (RIGHT_JOYSTICK); // force read potentially bad init readings
-
     //calibrate
     mux.enablePort((*joystick).muxPort);
     Serial.println(mux.getPort());
@@ -120,7 +143,7 @@ void calibrateJoystick(Joystick *joystick) //calculate zero offset when centered
     (*joystick).offsetY = (y/nSamples);//avg
 
     mux.disablePort((*joystick).muxPort);
-    Serial.println(String("Joystick calibrated. Zero offset = ")+"X:"+(*joystick).offsetX+", Y:"+(*joystick).offsetY);//joysticks[muxPort].nameID);
+    Serial.println(String("Joystick calibrated. Zero offset = ")+"X: "+(*joystick).offsetX+", Y: "+(*joystick).offsetY);//joysticks[muxPort].nameID);
   }
 
 
@@ -138,6 +161,8 @@ void setup()
   Wire.begin();
   mux.begin();
 
+  leftJoystick.Update();//(LEFT_JOYSTICK); // force read potentially bad init readings
+  rightJoystick.Update();// (RIGHT_JOYSTICK); // force read potentially bad init readings
   calibrateJoystick(&leftJoystick); // calculates joystick zero offset
   calibrateJoystick(&rightJoystick); // calculates joystick zero offset
  
@@ -158,5 +183,5 @@ void loop()
 
   Send();
 
-  delay(200);
+  delay(2);
 }
