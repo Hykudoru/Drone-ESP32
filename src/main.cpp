@@ -6,7 +6,6 @@
 #include <SparkFun_Qwiic_Joystick_Arduino_Library.h>
 #include <SparkFun_I2C_Mux_Arduino_Library.h>
 
-
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
 #else
@@ -15,8 +14,8 @@
 
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
-pointerFunction pfunc;
-Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
+pointerFunction ptrMode;
+Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 
 QWIICMUX mux;
 JOYSTICK js;
@@ -58,8 +57,6 @@ void Joystick::Update()
     rawX = 1023 - rawX;
   }
 
-  Serial.println(String("Joystick ")+muxPort+" RawX: "+x+", RawY: "+y+", Button: "+button);
-
   // Map X-axis Range [-100, 100] 
   if (rawX < (rawMidpoint - deadzoneOffset))
   {
@@ -96,10 +93,12 @@ void Joystick::Update()
   button = !js.getButton(); //Reversed so that button pressed = 1 else 0;
 
   Serial.println(String("Joystick ")+muxPort+" X: "+x+", Y: "+y+", Button: "+button);
+  oled.println(String("JS ")+muxPort+" X:"+x+", Y:"+y+", Button:"+button);
   mux.disablePort(muxPort);
 
   //return Vector3(x, y, joystick.getButton());
 }
+
 Joystick leftJoystick(LEFT_JOYSTICK);
 Joystick rightJoystick(RIGHT_JOYSTICK);
 
@@ -153,6 +152,34 @@ bool Send()
   return 0;
 }
 
+void mode_1() {
+  //oled.clearDisplay();
+  oled.setCursor(0, 0);
+ // oled.println("Mode 1");
+
+  //calibrate();
+
+  oled.display();
+}
+void mode_2() {
+  //oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println("Mode 2");
+
+  //calibrate();
+
+  oled.display();
+}
+void mode_3() {
+  //oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println("Mode 3");
+
+  //calibrate();
+
+  oled.display();
+}
+
 void setup() 
 {
   // put your setup code here, to run once:
@@ -166,22 +193,43 @@ void setup()
   calibrateJoystick(&leftJoystick); // calculates joystick zero offset
   calibrateJoystick(&rightJoystick); // calculates joystick zero offset
  
+   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.display();//displays initial adafruit image
+  oled.clearDisplay();//clears initial adafruit image
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(0, 0);
+  oled.println("Setup...");
+  oled.display();
+  
+  // pinMode(BUTTON_A, INPUT_PULLUP);
+  // pinMode(BUTTON_B, INPUT_PULLUP);
+  // pinMode(BUTTON_C, INPUT_PULLUP);
+  
+  ptrMode = &mode_1;  
+  
+  delay(500);
+  oled.clearDisplay();
+
   delay(100);
  }
 
 
 void loop() 
 {
-  // if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
-  // if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
-  // if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
+  oled.clearDisplay();
+//   if (digitalRead(BUTTON_A) == 0) pfunc = &mode_1;
+//   if (digitalRead(BUTTON_B) == 0) pfunc = &mode_2;
+//   if (digitalRead(BUTTON_C) == 0) pfunc = &mode_3;
   
-  //(*pfunc)();
+ 
 
   leftJoystick.Update();
   rightJoystick.Update();
-
   Send();
 
+  (*ptrMode)();
+  
+  oled.display();
   delay(2);
 }
