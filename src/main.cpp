@@ -162,12 +162,6 @@ void inputUpdate()
         --drone.m4Speed;
       }
 
-      //clamp range
-      clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-      clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-      clamp(drone.m3Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-      clamp(drone.m4Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-
       Serial.println("-----------");
       Serial.println(String("Motor 1: ")+drone.m1Speed);
       Serial.println(String("Motor 2: ")+drone.m2Speed);
@@ -235,10 +229,15 @@ for (size_t i = 0; i <= 5; i++)
 }
 */
 
+  //clamp range
+  clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+  clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+  clamp(drone.m3Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
+  clamp(drone.m4Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
   drone.m1->setSpeed(drone.m1Speed);
-  drone.m1->setSpeed(drone.m2Speed);
-  drone.m1->setSpeed(drone.m3Speed);
-  drone.m1->setSpeed(drone.m4Speed);
+  drone.m2->setSpeed(drone.m2Speed);
+  drone.m3->setSpeed(drone.m3Speed);
+  drone.m4->setSpeed(drone.m4Speed);
   drone.m1->run(FORWARD);
   drone.m2->run(FORWARD);
   drone.m3->run(FORWARD);
