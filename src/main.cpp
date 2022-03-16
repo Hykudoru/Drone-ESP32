@@ -42,41 +42,9 @@ MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT);
 MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT);
 
 
-// void calibrateJoystick(int muxPort)
-// {
-//     mux.enablePort(muxPort);
-//     Serial.println(mux.getPort());
-//     joystickZeroOffsetX = joystick.getHorizontal();
-//     joystickZeroOffsetY = joystick.getVertical();
-//     mux.disablePort(muxPort);
-// }
-
-// void calibrateJoystick(MuxJoystick *joystick) //calculate zero offset when centered
-//   {
-//     //calibrate
-//     // Serial.println("(Joystick calibration starting in 4 seconds...)");//joysticks[muxPort].nameID);
-//     // delay(1000);
-//     // Serial.println("(Joystick calibration starting in 3 seconds...)");//joysticks[muxPort].nameID);
-//     // delay(1000);
-//     // Serial.println("(Joystick calibration starting in 2 seconds...)");//joysticks[muxPort].nameID);
-//     // delay(1000);
-//     // Serial.println("(Joystick calibration starting in 1 seconds...)");//joysticks[muxPort].nameID);
-//     // delay(1000);
-//     Serial.println("Calibrating...");
-//   }
-
-#define LSTICK_LEFT_LED 10
-#define LSTICK_RIGHT_LED 11
-#define LSTICK_DOWN_LED 12
-#define LSTICK_UP_LED 13
-
-#define RSTICK_LEFT_LED 9//10
-#define RSTICK_RIGHT_LED 9//11
-#define RSTICK_DOWN_LED 9//12
-#define RSTICK_UP_LED 9//13
 
 void setup() 
-{
+{ 
   // put your setup code here, to run once:
   Serial.begin(BAUD_RATE);
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -104,14 +72,6 @@ void setup()
 
   pinMode(LED_GREEN, OUTPUT);
 
-  pinMode(LSTICK_LEFT_LED, OUTPUT);
-  pinMode(LSTICK_RIGHT_LED, OUTPUT);
-  pinMode(LSTICK_DOWN_LED, OUTPUT);
-  pinMode(LSTICK_UP_LED, OUTPUT);
-  pinMode(RSTICK_LEFT_LED, OUTPUT);
-  pinMode(RSTICK_RIGHT_LED, OUTPUT);
-  pinMode(RSTICK_DOWN_LED, OUTPUT);
-  pinMode(RSTICK_UP_LED, OUTPUT);
   // ptrMode = &mode_1;  
 
   digitalWrite(LED_GREEN, HIGH);
@@ -119,51 +79,59 @@ void setup()
   digitalWrite(LED_GREEN, LOW);
  }
 
-    
+void CopyCommand()
+{
+  Keyboard.press(KEY_LEFT_CTRL);
+  Keyboard.press('c');
+  Keyboard.releaseAll();
+}
+
+void PasteCommand()
+{
+  Keyboard.press(KEY_LEFT_CTRL);
+  Keyboard.press('c');
+  Keyboard.releaseAll();
+} 
+
 void mouseLoop()
 {
-  static MuxJoystick *mouse = &leftJoystick;
-  static MuxJoystick *scroll = &rightJoystick;
   static int maxSpeed = 40;
   static bool mouseActive = true;
-    
+
+  Vector3<int> mouse = leftJoystick.Read();
+  Vector3<int> scroll = rightJoystick.Read();
+
   if (Serial.read() == 'p' || digitalRead(BUTTON_A) == HIGH)
   {
     mouseActive = !mouseActive;
   }
-
+  
   if (mouseActive) 
   { 
-    if (mouse->x != 0 || mouse->y != 0)
+    if (mouse.x != 0 || mouse.y != 0)
     {
-      int dirX = mouse->x/abs(mouse->x);// -1 or 1
-      int dirY = mouse->y/abs(mouse->y);// -1 or 1
-      int mouseX = dirX * map(abs(mouse->x), 0, 100, 0, maxSpeed);
-      int mouseY = dirY * map(abs(mouse->y), 0, 100, 0, maxSpeed);
+      int dirX = mouse.x/abs(mouse.x);// -1 or 1
+      int dirY = mouse.y/abs(mouse.y);// -1 or 1
+      mouse.x = dirX * map(abs(mouse.x), 0, 100, 0, maxSpeed);
+      mouse.y = dirY * map(abs(mouse.y), 0, 100, 0, maxSpeed);
       
-      Mouse.move(mouseX, -mouseY, scroll->y);
+      Mouse.move(mouse.x, -mouse.y, scroll.y);
 
       Serial.println("-----------------------");
-      Serial.print(String("Mouse \t x:")+mouse->x+", y:"+ mouse->y);
+      Serial.print(String("Mouse \t x:")+mouse.x+", y:"+ mouse.y);
       Serial.println(String("\t dirX:")+dirX+" dirY:"+dirY);
       Serial.println("-----------------------");
-      
-      
     }
-    if (mouse->button)
+    if (mouse.z)
     {
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('c');
-      Keyboard.releaseAll();
+      CopyCommand();
     }
-    if (scroll->button) {
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('v');
-      Keyboard.releaseAll();
+    if (scroll.z) {
+      PasteCommand();
     }
       //Keyboard.write(KEY_RETURN);
 
-    delay(5);
+    //delay(5);
   }
     // if (Keyboard.)
 }
@@ -180,70 +148,7 @@ void loop()
   // if (digitalRead(BUTTON_B) == 0) ptrMode = mode_2;
   // if (digitalRead(BUTTON_C) == 0) ptrMode = mode_3;
   
-  leftJoystick.Read();
-  rightJoystick.Read();
   mouseLoop();
-  // LEFT JOYSTICK LEDS
-
-  // // LEFT
-  // if (leftJoystick.x < 0) {
-  //   analogWrite(LSTICK_LEFT_LED, map(abs(leftJoystick.x), 0, 100, 0, 255));
-  //   digitalWrite(LSTICK_RIGHT_LED, LOW);
-  // } // RIGHT
-  // else if(leftJoystick.x > 0) {
-  //   analogWrite(LSTICK_RIGHT_LED, map(abs(leftJoystick.x), 0, 100, 0, 255));
-  //   digitalWrite(LSTICK_LEFT_LED, LOW);
-  // } // ZERO
-  // else {
-  //    digitalWrite(LSTICK_LEFT_LED, LOW);
-  //   digitalWrite(LSTICK_RIGHT_LED, LOW);
-  // }
-  // // DOWN
-  // if (leftJoystick.y < 0) {
-  //   analogWrite(LSTICK_DOWN_LED, map(abs(leftJoystick.y), 0, 100, 0, 255));
-  //   digitalWrite(LSTICK_UP_LED, LOW);
-  // }// UP
-  // else if(leftJoystick.y > 0) {
-  //   analogWrite(LSTICK_UP_LED, map(abs(leftJoystick.y), 0, 100, 0, 255));
-  //   digitalWrite(LSTICK_DOWN_LED, LOW);
-  // } // ZERO
-  // else {
-  //   digitalWrite(LSTICK_DOWN_LED, LOW);
-  //   digitalWrite(LSTICK_UP_LED, LOW);
-  // }
-
-  // // RIGHT JOYSTICK LEDS
-  
-  // // LEFT
-  // if (rightJoystick.x < 0) {
-  //   analogWrite(RSTICK_LEFT_LED, map(abs(rightJoystick.x), 0, 100, 0, 255));
-  //   digitalWrite(RSTICK_RIGHT_LED, LOW);
-  // } // RIGHT
-  // else if(rightJoystick.x > 0) {
-  //   analogWrite(RSTICK_RIGHT_LED, map(abs(rightJoystick.x), 0, 100, 0, 255));
-  //   digitalWrite(RSTICK_LEFT_LED, LOW);
-  // }// ZERO
-  // else {
-  //   digitalWrite(RSTICK_LEFT_LED, LOW);
-  //   digitalWrite(RSTICK_RIGHT_LED, LOW);
-  // } 
-
-  //   // DOWN
-  // if (rightJoystick.y < 0) {
-  //   analogWrite(RSTICK_DOWN_LED, map(abs(rightJoystick.y), 0, 100, 0, 255));
-  //   digitalWrite(RSTICK_UP_LED, LOW);
-  // }// UP
-  // else if(rightJoystick.y > 0) {
-  //   analogWrite(RSTICK_UP_LED, map(abs(rightJoystick.y), 0, 100, 0, 255));
-  //   digitalWrite(RSTICK_DOWN_LED, LOW);
-  // } // ZERO
-  // else {
-  //   digitalWrite(RSTICK_DOWN_LED, LOW);
-  //   digitalWrite(RSTICK_UP_LED, LOW);
-  // }
-  
-  Send();
-
   
   //(*ptrMode)();
   
