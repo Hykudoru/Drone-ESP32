@@ -4,10 +4,10 @@
 
 class MuxJoystick
 {
-public:
   int x = 0;// [-100, 100]
   int y = 0;// [-100, 100]
-  int button = 0; // 1
+  int buttonPressed = 0; // 1
+public:  
   int muxPort;
   MuxJoystick(int muxPort)
   {
@@ -16,13 +16,5 @@ public:
   ~MuxJoystick() {}
   void Start();
   Vector3<int> Read();
-};
-
-class JoystickController
-{
- public: 
-  MuxJoystick *leftJoystick;
-  MuxJoystick *rightJoystick;
-  //char *command = "";
 };
 #endif
