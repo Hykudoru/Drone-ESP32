@@ -9,18 +9,29 @@
 #include <utility/Adafruit_MS_PWMServoDriver.h>
 #include <Drone.h>
 #include <Functions.h>
+#include <esp_now.h>
+#include <WiFi.h>
 
-double totalTime = 0.0; // seconds
-double deltaTime = 0.0;//time difference (in seconds) between each loop;
-void timeUpdate() {
-  static unsigned long prevTime = 0.0;
+
+double deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
+double deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
+double deltaTimeSec = 0.0;//time difference (in seconds) between each loop;
+
+void TimeUpdate() {
   
-  totalTime = millis()/1000.0; // seconds
-  deltaTime = (millis() - prevTime)/1000.0;// delta seconds
-  prevTime = millis();//update time
+  static unsigned long prevMillisTime = 0.0;
+  static unsigned long prevMicrosTime = 0.0;
 
-  Serial.print("deltaTime (sec): ");Serial.println(deltaTime);
-  Serial.print("Time (sec): ");Serial.println(totalTime);
+  deltaTimeMillis = (millis() - prevMillisTime);
+  prevMillisTime = millis();
+
+  deltaTimeMicros = (micros() - prevMicrosTime);
+  prevMicrosTime = micros();
+
+  deltaTimeSec = deltaTimeMillis/1000.0;// delta seconds
+
+  Serial.println(String("Time: ")+millis()/1000.0+"s \t"+millis()+"ms \t"+micros()+"micros");
+  Serial.println(String("Time Delta")+deltaTimeSec+"s \t"+deltaTimeMillis+"ms \t"+deltaTimeMicros+"micros");
 }
 
 void delay(double milliSec, void(*callback)(void))
@@ -55,6 +66,24 @@ pointerFunction ptrMode;
 #else
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 #endif
+
+
+void duelPrint(Vector3<int> vec, String header = "")
+{
+    Serial.println("");
+
+    Serial.print(header); 
+    Serial.print(vec.x); Serial.print(", ");
+    Serial.print(vec.y); Serial.print(", ");
+    Serial.println(vec.z); 
+
+    oled.print(header); 
+    oled.print(vec.x); oled.print(", ");
+    oled.print(vec.y); oled.print(", ");
+    oled.println(vec.z); 
+
+    oled.display();
+}
 void duelPrint(Vector3<float> vec, String header = "")
 {
     Serial.println("");
@@ -74,6 +103,34 @@ void duelPrint(Vector3<float> vec, String header = "")
 
 Drone drone = Drone();
 
+
+typedef struct Data
+{
+  Vector3<int> leftJoystick;
+  Vector3<int> rightJoystick;
+};
+Data data;
+void OnDataReceived(const uint8_t *mac, const uint8_t *incomingData, int length)
+{
+  if (incomingData != NULL)
+  {
+    memcpy(&data, incomingData, sizeof(data));
+    duelPrint(data.leftJoystick);
+    duelPrint(data.rightJoystick);
+  }
+}
+
+void SetupESPNOW()
+{
+  WiFi.mode(WIFI_MODE_STA);
+  Serial.println("MAC Address: "+WiFi.macAddress());
+  if (esp_now_init() != ESP_OK)
+  {
+    Serial.println("ESP_NOW failed to init");
+    return;
+  }
+  esp_now_register_recv_cb(OnDataReceived);
+}
 
 void mode_1() {
   oled.clearDisplay();
@@ -112,7 +169,7 @@ void mode_3() {
   delay(5000);
 }
 
-void inputUpdate()
+void InputUpdate()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
@@ -173,7 +230,7 @@ void inputUpdate()
   }
 }
 
-bool DEBUGGING = true;
+bool DEBUGGING = false;
 void setup() 
 {
   Serial.begin(BAUD_RATE);
@@ -201,15 +258,22 @@ void setup()
   
   ptrMode = &mode_1;  
   
+  SetupESPNOW();
+
   drone.Init();
+  
   delay(500);
   oled.clearDisplay();
 }
 
+pointerFunction procedureQueue[] = {TimeUpdate, InputUpdate};
 void loop() 
 {
-  timeUpdate();
-  inputUpdate();
+  for (size_t i = 0; i < sizeof(procedureQueue)/sizeof(pointerFunction); i++)
+  {
+    procedureQueue[0];
+  }
+  
   drone.Update();
 
 /*
