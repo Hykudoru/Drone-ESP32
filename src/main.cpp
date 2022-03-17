@@ -6,7 +6,11 @@
 #include <Vector.h>
 #include <MuxJoystick.h>
 
+#include <esp_now.h>
+#include <WiFi.h>
+
 #if defined(ESP32)
+
   const int BAUD_RATE = 115200;
   #define BUTTON_A 15
   #define BUTTON_B 32
@@ -53,6 +57,60 @@ MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT);
 //     Serial.println("Calibrating...");
 //   }
 
+void mode0()
+{
+
+}
+
+void mode1() 
+{
+
+}
+
+void mode2()
+{
+
+}
+
+void mode3()
+{
+
+}
+
+typedef struct Data
+{
+  Vector3<int> leftJoystick;
+  Vector3<int> rightJoystick;
+};
+Data dataSending;
+uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; 
+uint8_t broadcastAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone Mac = 94:B9:7E:5F:51:40
+esp_now_peer_info_t peerInfo;
+void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
+{
+    Serial.println(String("STATUS: ")+(status == ESP_NOW_SEND_SUCCESS));
+}
+
+void SetupESPNOW()
+{
+  WiFi.mode(WIFI_MODE_STA);
+  Serial.println("MAC Address: "+WiFi.macAddress());
+  if (esp_now_init() != ESP_OK)
+  {
+    Serial.println("ESP_NOW failed to init");
+    return;
+  }
+  esp_now_register_send_cb(OnDataSent);
+
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  if (esp_now_add_peer(&peerInfo) != ESP_OK)
+  {
+    Serial.println("ESP_NOW failed to add peer");
+    return;
+  }
+}
 
 void setup() 
 {
@@ -73,36 +131,40 @@ void setup()
   rightJoystick.Start();
 
   oled.display();
+  delay(1000);
 
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
-  // ptrMode = &mode_1;  
+  ptrMode = &mode0;  
 
+  SetupESPNOW();
+
+  oled.display();
   delay(1000);
  }
-
-bool Send()
-{
-  
-  return 0;
-}
-
-//char *mode = "mode_1";
 
 void loop() 
 {
   oled.clearDisplay();
-  // if (digitalRead(BUTTON_A) == 0) mode = "mode_1";
-  // if (digitalRead(BUTTON_B) == 0) mode = "mode_2";
-  // if (digitalRead(BUTTON_C) == 0) mode = "mode_3";
+  if (digitalRead(BUTTON_A) == 0) ptrMode = mode1;
+  if (digitalRead(BUTTON_B) == 0) ptrMode = mode2;
+  if (digitalRead(BUTTON_C) == 0) ptrMode = mode3;
   
-  Vector3<int> l = leftJoystick.Read();
-  Vector3<int> r = rightJoystick.Read();
-  Send();
+  (*ptrMode)();
+  
+  // Assign values
+  dataSending.leftJoystick = leftJoystick.Read();
+  dataSending.rightJoystick = rightJoystick.Read();
+  // Send data
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &dataSending, sizeof(dataSending));
+  if (result == ESP_OK)
+  {
+    Serial.println("Data sent!");
+  } else {
+    Serial.println("Error sending data.");
+  }
 
-  //(*ptrMode)();
-  
   oled.display();
   delay(20);
 }
