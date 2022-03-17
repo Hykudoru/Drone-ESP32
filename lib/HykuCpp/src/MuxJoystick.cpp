@@ -90,7 +90,7 @@ Vector3<int> MuxJoystick::Read()
   Serial.println(String("Joystick_")+muxPort
   +" <x:"+x+", y:"+y+">"+"  pressed:"+(bool)(buttonPressed)
   +" \t raw: <x:"+rawX+", y:"+rawY+">  pressed:"+rawJoystick.getButton());
-  oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+buttonPressed);
+  //oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+buttonPressed);
   
   mux.disablePort(muxPort);
 

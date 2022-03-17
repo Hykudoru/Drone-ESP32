@@ -164,7 +164,11 @@ void loop()
   } else {
     Serial.println("Error sending data.");
   }
-
+  
+  oled.setCursor(0, 0);
+  oled.println(String("Joystick_")+leftJoystick.muxPort+" <"+leftJoystick.Read().x+","+leftJoystick.Read().y+","+leftJoystick.Read().z+">");
+  oled.println(String("Joystick_")+rightJoystick.muxPort+" <"+rightJoystick.Read().x+","+rightJoystick.Read().y+","+rightJoystick.Read().z+">");
   oled.display();
+  
   delay(20);
 }
