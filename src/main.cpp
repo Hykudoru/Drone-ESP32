@@ -108,16 +108,18 @@ typedef struct Data
 {
   Vector3<int> leftJoystick;
   Vector3<int> rightJoystick;
-};
+} Data;
 Data data;
+Data* ptrData = NULL;
 void OnDataReceived(const uint8_t *mac, const uint8_t *incomingData, int length)
 {
+  static int count = 0;
   if (incomingData != NULL)
   {
+    Serial.println(++count);
     memcpy(&data, incomingData, sizeof(data));
-    duelPrint(data.leftJoystick);
-    duelPrint(data.rightJoystick);
   }
+  ptrData = &data;
 }
 
 void SetupESPNOW()
@@ -148,13 +150,6 @@ void mode_2() {
   oled.setCursor(0, 0);
   oled.println("Mode 2");
 
-  Serial.println("-----------");
-      Serial.println(String("Motor 1: ")+drone.m1Speed);
-      Serial.println(String("Motor 2: ")+drone.m2Speed);
-      Serial.println(String("Motor 3: ")+drone.m3Speed);
-      Serial.println(String("Motor 4: ")+drone.m4Speed);
-      Serial.println("-----------");
-
   oled.display();
 }
 
@@ -166,7 +161,6 @@ void mode_3() {
   //calibrate();
 
   oled.display();
-  delay(5000);
 }
 
 void InputUpdate()
@@ -218,7 +212,7 @@ void InputUpdate()
         --drone.m3Speed;
         --drone.m4Speed;
       }
-
+      
       Serial.println("-----------");
       Serial.println(String("Motor 1: ")+drone.m1Speed);
       Serial.println(String("Motor 2: ")+drone.m2Speed);
@@ -226,7 +220,7 @@ void InputUpdate()
       Serial.println(String("Motor 4: ")+drone.m4Speed);
       Serial.println("-----------");
     }
-    delay(10);
+    //delay(10);
   }
 }
 
@@ -271,28 +265,17 @@ void loop()
 {
   for (size_t i = 0; i < sizeof(procedureQueue)/sizeof(pointerFunction); i++)
   {
-    procedureQueue[0];
+   procedureQueue[0]();
+  }
+
+  if (ptrData != NULL)
+  {
+    duelPrint((*ptrData).leftJoystick, "LEFT JOYSTICK");
+    duelPrint((*ptrData).rightJoystick, "RIGHT JOYSTICK");
+    drone.Update();
+    ptrData = NULL;
   }
   
-  drone.Update();
-
-/*
-for (size_t i = 0; i <= 5; i++)
-{
-  m1->setSpeed(51 * i);
-  m1->run(FORWARD);
-  delay(1000);
-
-  // m1->setSpeed(0);
-  // //m1->run(BACKWARD);
-  // delay(1000);
-
-  m1->setSpeed(51 * i);
-  m1->run(BACKWARD);
-  delay(1000);
-}
-*/
-
   //clamp range
   clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
   clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
@@ -310,6 +293,4 @@ for (size_t i = 0; i <= 5; i++)
   if (ptrMode) {
     (*ptrMode)();
   }
-
-  delay(2);
 }
