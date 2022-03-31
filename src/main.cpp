@@ -5,8 +5,8 @@
 #include <Adafruit_SSD1306.h>
 #include <Vector.h>
 #include <MuxJoystick.h>
-#include <Mouse.h>
-#include <Keyboard.h>
+#include <BleKeyboard.h>
+#include <BleMouse.h>
 
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
@@ -31,6 +31,7 @@
   #define LED_GREEN 8
 #endif
 
+BleKeyboard bleKeyboard;
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
@@ -40,8 +41,6 @@ const int LEFT_JOYSTICK_MUX_PORT = 1;
 const int RIGHT_JOYSTICK_MUX_PORT = 0;
 MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT);
 MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT);
-
-
 
 void setup() 
 { 
@@ -57,100 +56,46 @@ void setup()
   oled.display();
   delay(500);
   oled.clearDisplay();
-
-  leftJoystick.Start();
-  rightJoystick.Start();
-
-  Mouse.begin();
-  Keyboard.begin();
-
-  oled.display();
-
-  pinMode(BUTTON_A, INPUT_PULLUP);
+pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
 
-  pinMode(LED_GREEN, OUTPUT);
 
-  // ptrMode = &mode_1;  
+  leftJoystick.Start();
+  rightJoystick.Start();
+  bleKeyboard.begin();
 
-  digitalWrite(LED_GREEN, HIGH);
-  delay(1000);
-  digitalWrite(LED_GREEN, LOW);
+  oled.display();
  }
 
-void CopyCommand()
-{
-  Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('c');
-  Keyboard.releaseAll();
-}
-
-void PasteCommand()
-{
-  Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('c');
-  Keyboard.releaseAll();
-} 
-
-void mouseLoop()
-{
-  static int maxSpeed = 40;
-  static bool mouseActive = true;
-
-  Vector3<int> mouse = leftJoystick.Read();
-  Vector3<int> scroll = rightJoystick.Read();
-
-  if (Serial.read() == 'p' || digitalRead(BUTTON_A) == HIGH)
-  {
-    mouseActive = !mouseActive;
-  }
-  
-  if (mouseActive) 
-  { 
-    if (mouse.x != 0 || mouse.y != 0)
-    {
-      int dirX = mouse.x/abs(mouse.x);// -1 or 1
-      int dirY = mouse.y/abs(mouse.y);// -1 or 1
-      mouse.x = dirX * map(abs(mouse.x), 0, 100, 0, maxSpeed);
-      mouse.y = dirY * map(abs(mouse.y), 0, 100, 0, maxSpeed);
-      
-      Mouse.move(mouse.x, -mouse.y, scroll.y);
-
-      Serial.println("-----------------------");
-      Serial.print(String("Mouse \t x:")+mouse.x+", y:"+ mouse.y);
-      Serial.println(String("\t dirX:")+dirX+" dirY:"+dirY);
-      Serial.println("-----------------------");
-    }
-    if (mouse.z)
-    {
-      CopyCommand();
-    }
-    if (scroll.z) {
-      PasteCommand();
-    }
-      //Keyboard.write(KEY_RETURN);
-
-    //delay(5);
-  }
-    // if (Keyboard.)
-}
-
-void Send()
-{
-}
+int maxSpeed = 40;
+bool mouseActive = true;
+Vector3<int> mouse;
+Vector3<int> scroll;
 
 void loop() 
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  // if (digitalRead(BUTTON_A) == 0) ptrMode = mode_1;
-  // if (digitalRead(BUTTON_B) == 0) ptrMode = mode_2;
-  // if (digitalRead(BUTTON_C) == 0) ptrMode = mode_3;
   
-  mouseLoop();
+if (mouseActive) 
+{ 
+  mouse = leftJoystick.Read();
+  scroll = rightJoystick.Read();
   
-  //(*ptrMode)();
+  if (mouse.x != 0 || mouse.y != 0)
+  {
+    int dirX = mouse.x/abs(mouse.x);// -1 or 1
+    int dirY = mouse.y/abs(mouse.y);// -1 or 1
+    mouse.x = dirX * map(abs(mouse.x), 0, 100, 0, maxSpeed);
+    mouse.y = dirY * map(abs(mouse.y), 0, 100, 0, maxSpeed);
+
+    if (bleKeyboard.isConnected())
+    {
+      
+    }
+  }
+}
   
   oled.display();
   //delay(2);
