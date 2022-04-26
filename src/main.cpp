@@ -103,23 +103,38 @@ void duelPrint(Vector3<float> vec, String header = "")
 
 Drone drone = Drone();
 
+typedef struct DroneData
+{
+  String info;
+};
 
-typedef struct Data
+typedef struct JoystickData
 {
   Vector3<int> leftJoystick;
   Vector3<int> rightJoystick;
-} Data;
-Data data;
-Data* ptrData = NULL;
-void OnDataReceived(const uint8_t *mac, const uint8_t *incomingData, int length)
+};
+
+DroneData outgoingData;
+JoystickData incomingData;
+JoystickData* ptrData = NULL;
+uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
+uint8_t broadcastMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; // controller MAC address
+esp_now_peer_info_t peerInfo;
+
+void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
   static int count = 0;
-  if (incomingData != NULL)
+  if (data != NULL)
   {
     Serial.println(++count);
-    memcpy(&data, incomingData, sizeof(data));
+    memcpy(&incomingData, data, sizeof(data));
   }
-  ptrData = &data;
+  ptrData = &incomingData;
+}
+
+void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
+{
+    Serial.println(String("STATUS: ")+(status == ESP_NOW_SEND_SUCCESS));
 }
 
 void SetupESPNOW()
@@ -132,6 +147,17 @@ void SetupESPNOW()
     return;
   }
   esp_now_register_recv_cb(OnDataReceived);
+
+  esp_now_register_send_cb(OnDataSent);
+
+  memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  if (esp_now_add_peer(&peerInfo) != ESP_OK)
+  {
+    Serial.println("ESP_NOW failed to add peer");
+    return;
+  }
 }
 
 void mode_1() {
@@ -275,7 +301,7 @@ void loop()
     drone.Update();
     ptrData = NULL;
   }
-  
+
   //clamp range
   clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
   clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
@@ -292,5 +318,19 @@ void loop()
  
   if (ptrMode) {
     (*ptrMode)();
+  }
+
+  
+  // Assign values
+  outgoingData.info = "MESSAGE FROM DRONE";
+  // Send data
+  esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
+  if (result == ESP_OK)
+  {
+    Serial.println("Data sent!");
+    oled.println(String(sizeof(outgoingData))+" bytes sent. ");
+  } else {
+    Serial.println("Error sending data.");
+    oled.println("Error sending data.");
   }
 }
