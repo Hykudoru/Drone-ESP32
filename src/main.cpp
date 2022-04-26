@@ -49,8 +49,19 @@ typedef struct JoystickData
 DroneData incomingData;
 JoystickData outgoingData;
 uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; 
-uint8_t broadcastAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone Mac = 94:B9:7E:5F:51:40
+uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone Mac = 94:B9:7E:5F:51:40
 esp_now_peer_info_t peerInfo;
+
+void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
+{
+  static int count = 0;
+  if (data != NULL)
+  {
+    Serial.println(++count);
+    memcpy(&incomingData, data, sizeof(data));
+  }
+  //ptrJoystickData = &incomingJoystickData;
+}
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
 {
@@ -68,7 +79,7 @@ void SetupESPNOW()
   }
   esp_now_register_send_cb(OnDataSent);
 
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
@@ -144,7 +155,7 @@ void loop()
   outgoingData.leftJoystick = leftJoystick.Read();
   outgoingData.rightJoystick = rightJoystick.Read();
   // Send data
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
+  esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
   if (result == ESP_OK)
   {
     Serial.println("Data sent!");
@@ -157,6 +168,8 @@ void loop()
   oled.setCursor(0, 0);
   oled.println(String("LS: (")+leftJoystick.muxPort+") <"+outgoingData.leftJoystick.x+","+outgoingData.leftJoystick.y+","+outgoingData.leftJoystick.z+">");
   oled.println(String("RS: (")+rightJoystick.muxPort+") <"+outgoingData.rightJoystick.x+","+outgoingData.rightJoystick.y+","+outgoingData.rightJoystick.z+">");
+  oled.println(incomingData.info);
+
   oled.display();
 
   delay(20);
