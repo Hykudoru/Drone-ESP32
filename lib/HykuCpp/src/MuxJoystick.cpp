@@ -11,7 +11,6 @@
 
 QWIICMUX mux;
 JOYSTICK rawJoystick;
-extern Adafruit_SSD1306 oled;// = Adafruit_SSD1306(128, 32, &Wire);
 
 void MuxJoystick::Start()
 {
@@ -31,7 +30,7 @@ Vector3<int> MuxJoystick::Read()
   // Check frame to determine if joystick values are still current; 
   if (t == millis())
   {
-    Vector3<int> axis(x, y, buttonPressed);
+    Vector3<int> axis(x, y, (int)isPressed);
     return axis;
   }
 
@@ -82,18 +81,23 @@ Vector3<int> MuxJoystick::Read()
   }
   
   // Invert axes if physically upside down
-  x *= -1.0;
-  y *= -1.0;
+  if (invertH) {
+    x *= -1.0;
+  }
+  if (invertV)
+  {
+    y *= -1.0;
+  }
   //Invert button so that pressed state means 1 = true else 0;
-  buttonPressed = !rawJoystick.getButton();
+  isPressed = !rawJoystick.getButton();
   
   Serial.println(String("Joystick_")+muxPort
-  +" <x:"+x+", y:"+y+">"+"  pressed:"+(bool)(buttonPressed)
+  +" <x:"+x+", y:"+y+">"+"  pressed:"+(int)(isPressed)
   +" \t raw: <x:"+rawX+", y:"+rawY+">  pressed:"+rawJoystick.getButton());
   //oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+buttonPressed);
   
   mux.disablePort(muxPort);
 
-  Vector3<int> axis(x, y, buttonPressed);
+  Vector3<int> axis(x, y, (int)isPressed);
   return axis;
 };
