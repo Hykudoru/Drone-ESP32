@@ -105,7 +105,7 @@ Drone drone = Drone();
 
 typedef struct DroneData
 {
-  String info;
+  Vector3<float> Acceleration;
 };
 
 typedef struct JoystickData
@@ -320,16 +320,8 @@ void loop()
     (*ptrMode)();
   }
 
-  String msg = "Drone Acceleration: <";
-  msg += drone.GetAcceleration().x;
-  msg += ", ";
-  msg += drone.GetAcceleration().y;
-  msg += ", ";
-  msg += drone.GetAcceleration().z;
-  msg += ">";
-
   // Assign values
-  outgoingData.info = msg;
+  outgoingData.Acceleration = drone.GetAcceleration();
   // Send data
   esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
   if (result == ESP_OK)
