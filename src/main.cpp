@@ -77,6 +77,7 @@ void SetupESPNOW()
     Serial.println("ESP_NOW failed to init");
     return;
   }
+  esp_now_register_recv_cb(OnDataReceived);
   esp_now_register_send_cb(OnDataSent);
 
   memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
@@ -168,7 +169,7 @@ void loop()
   oled.setCursor(0, 0);
   oled.println(String("LS: (")+leftJoystick.muxPort+") <"+outgoingData.leftJoystick.x+","+outgoingData.leftJoystick.y+","+outgoingData.leftJoystick.z+">");
   oled.println(String("RS: (")+rightJoystick.muxPort+") <"+outgoingData.rightJoystick.x+","+outgoingData.rightJoystick.y+","+outgoingData.rightJoystick.z+">");
-  oled.println(incomingData.info);
+  oled.println("Incoming: " + incomingData.info);
 
   oled.display();
 
