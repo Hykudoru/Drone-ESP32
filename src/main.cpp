@@ -37,7 +37,8 @@ MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT, false, false);
 
 typedef struct DroneData
 {
-  String info;
+  Vector3<float> Acceleration;
+  Vector3<float> AngularVelocity;
 };
 
 typedef struct JoystickData
@@ -52,20 +53,28 @@ uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34};
 uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone Mac = 94:B9:7E:5F:51:40
 esp_now_peer_info_t peerInfo;
 
+int outgoingSuccessCount = 0;
+int outgoingFailCount = 0;
+int incomingCount = 0;
+
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
-  static int count = 0;
   if (data != NULL)
   {
-    Serial.println(++count);
+    Serial.println(++incomingCount);
     memcpy(&incomingData, data, sizeof(data));
   }
-  //ptrJoystickData = &incomingJoystickData;
 }
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
 {
-    Serial.println(String("STATUS: ")+(status == ESP_NOW_SEND_SUCCESS));
+  if (status == ESP_NOW_SEND_SUCCESS)
+  {
+    outgoingSuccessCount++;
+  }
+  else {
+    outgoingFailCount++;
+  }
 }
 
 void SetupESPNOW()
@@ -90,13 +99,22 @@ void SetupESPNOW()
   }
 }
 
-void Mode1() 
+void DisplayMode1() 
 {
-
+  oled.setCursor(0, 0);
+  oled.println("CONTROLLER");
+  oled.println(String("LS: (")+leftJoystick.muxPort+") <"+outgoingData.leftJoystick.x+","+outgoingData.leftJoystick.y+","+outgoingData.leftJoystick.z+">");
+  oled.println(String("RS: (")+rightJoystick.muxPort+") <"+outgoingData.rightJoystick.x+","+outgoingData.rightJoystick.y+","+outgoingData.rightJoystick.z+">");
+  oled.println(String("Sent:")+outgoingSuccessCount+", Received:"+incomingCount);
+  oled.display();
 }
-void Mode2() 
+void DisplayMode2() 
 {
-
+  oled.setCursor(0, 0);
+  oled.println("DRONE");
+  oled.println(String("Acceleration: ")+"<"+incomingData.Acceleration.x+","+incomingData.Acceleration.y+","+incomingData.Acceleration.z+">");
+  oled.println(String("Angular Velocity: ")+"<"+incomingData.AngularVelocity.x+","+incomingData.AngularVelocity.y+","+incomingData.AngularVelocity.z+">");
+  oled.display();
 }
 
 void setup() 
@@ -117,7 +135,7 @@ void setup()
 
   leftJoystick.Start();
   rightJoystick.Start();
-  ptrMode = &Mode1;
+  ptrMode = &DisplayMode1;
 
   oled.display();
   delay(1000);
@@ -147,10 +165,8 @@ void loop()
   // if (digitalRead(BUTTON_A) == 0) ptrMode = mode1;
   // if (digitalRead(BUTTON_B) == 0) ptrMode = mode2;
   // if (digitalRead(BUTTON_C) == 0) ptrMode = mode3; 
-  if (digitalRead(BUTTON_TOGGLE) == 1) ptrMode = &Mode1;
-  if (digitalRead(BUTTON_TOGGLE2) == 1) ptrMode = &Mode2;
-
-  (*ptrMode)();
+  if (digitalRead(BUTTON_TOGGLE) == 1) ptrMode = &DisplayMode1;
+  if (digitalRead(BUTTON_TOGGLE2) == 1) ptrMode = &DisplayMode2;
 
   // Assign values
   outgoingData.leftJoystick = leftJoystick.Read();
@@ -166,12 +182,7 @@ void loop()
     oled.println("Error sending data.");
   }
 
-  oled.setCursor(0, 0);
-  oled.println(String("LS: (")+leftJoystick.muxPort+") <"+outgoingData.leftJoystick.x+","+outgoingData.leftJoystick.y+","+outgoingData.leftJoystick.z+">");
-  oled.println(String("RS: (")+rightJoystick.muxPort+") <"+outgoingData.rightJoystick.x+","+outgoingData.rightJoystick.y+","+outgoingData.rightJoystick.z+">");
-  oled.println("Incoming: " + incomingData.info);
-
-  oled.display();
+  (*ptrMode)();
 
   delay(20);
 }
