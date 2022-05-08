@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Controller",
+			"path": "Controller"
+		},
+		{
+			"name": "Drone",
+			"path": "Drone"
+		}
+	],
+	"settings": {}
+}
