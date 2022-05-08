@@ -25,7 +25,18 @@ void MuxJoystick::Start()
 
 Vector3<int> MuxJoystick::Read()
 {
+  static long t = 0;
   static int absErrorDeadZoneOffset = 15;
+
+  // Check frame to determine if joystick values are still current; 
+  if (t == millis())
+  {
+    Vector3<int> axis(x, y, buttonPressed);
+    return axis;
+  }
+
+  // New frame
+  t = millis();
 
   mux.enablePort(muxPort);
 
@@ -74,17 +85,15 @@ Vector3<int> MuxJoystick::Read()
   x *= -1.0;
   y *= -1.0;
   //Invert button so that pressed state means 1 = true else 0;
-  button = !rawJoystick.getButton();
+  buttonPressed = !rawJoystick.getButton();
   
   Serial.println(String("Joystick_")+muxPort
-  +" <x:"+x+", y:"+y+">"+"  pressed:"+(bool)(button)
+  +" <x:"+x+", y:"+y+">"+"  pressed:"+(bool)(buttonPressed)
   +" \t raw: <x:"+rawX+", y:"+rawY+">  pressed:"+rawJoystick.getButton());
-
-  oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+button);
+  //oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+buttonPressed);
   
   mux.disablePort(muxPort);
 
-  Vector3<int> axis(x, y, button);
-
+  Vector3<int> axis(x, y, buttonPressed);
   return axis;
 };
