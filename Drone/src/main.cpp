@@ -13,28 +13,22 @@
 #include <WiFi.h>
 
 
-double deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
-double deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
-double deltaTimeSec = 0.0;//time difference (in seconds) between each loop;
+unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
+unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
 
-void TimeUpdate() {
+void Time() {
   
-  static unsigned long prevMillisTime = 0.0;
-  static unsigned long prevMicrosTime = 0.0;
+  static unsigned long prevMillisTime = millis();
+  static unsigned long prevMicrosTime = micros();
 
   deltaTimeMillis = (millis() - prevMillisTime);
   prevMillisTime = millis();
 
   deltaTimeMicros = (micros() - prevMicrosTime);
   prevMicrosTime = micros();
-
-  deltaTimeSec = deltaTimeMillis/1000.0;// delta seconds
-
-  Serial.println(String("Time: ")+millis()/1000.0+"s \t"+millis()+"ms \t"+micros()+"micros");
-  Serial.println(String("Time Delta")+deltaTimeSec+"s \t"+deltaTimeMillis+"ms \t"+deltaTimeMicros+"micros");
 }
 
-void delay(double milliSec, void(*callback)(void))
+void delay(unsigned long milliSec, void(*callback)(void))
 {
   static unsigned long t = 0.0;
   //delay
@@ -42,7 +36,7 @@ void delay(double milliSec, void(*callback)(void))
   {
     t = millis(); //reset timer
     callback();
-    Serial.println(String("----------------------CALLBACK : t:")+ t/1000.0);
+    Serial.println("----------------------CALLBACK : t:" + (t/1000UL));
   }
 }
 
@@ -66,7 +60,6 @@ pointerFunction ptrMode;
 #else
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 #endif
-
 
 void duelPrint(Vector3<int> vec, String header = "")
 {
@@ -103,39 +96,61 @@ void duelPrint(Vector3<float> vec, String header = "")
 
 Drone drone = Drone();
 
-typedef struct DroneData
+typedef class SendReceiveData
 {
+  public:
+  byte ID;
+};
+
+typedef class DroneData: public SendReceiveData
+{
+  public:
   Vector3<float> Acceleration;
   Vector3<float> AngularVelocity;
 };
 
-typedef struct JoystickData
+typedef class JoystickData: public SendReceiveData
 {
-  Vector3<int> leftJoystick;
-  Vector3<int> rightJoystick;
+  public:
+  Vector3<int> LeftJoystick;
+  Vector3<int> RightJoystick;
 };
 
-DroneData outgoingData;
-JoystickData incomingData;
-JoystickData* ptrData = NULL;
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
 uint8_t broadcastMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; // controller MAC address
 esp_now_peer_info_t peerInfo;
 
+DroneData outgoingData;
+JoystickData incomingData;
+JoystickData* ptrIncomingData = NULL;
+const int MAX_DATA_BUFFER_SIZE = 10;
+SendReceiveData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
+int outgoingSuccessCount = 0;
+int outgoingFailCount = 0;
+int outgoingCount = 0;
+int incomingCount = 0;
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
-  static int count = 0;
-  if (data != NULL)
-  {
-    Serial.println(++count);
-    memcpy(&incomingData, data, sizeof(data));
-  }
-  ptrData = &incomingData;
+  // static int count = -1;
+  // count = (count + 1) > MAX_DATA_BUFFER_SIZE ? 0 : count + 1;
+  incomingCount++;
+  memcpy(&incomingData, data, sizeof(incomingData));
+  ptrIncomingData = &incomingData;
+
+  Serial.println("------INCOMING------");
+  // outgoingData.Acceleration = drone.GetAcceleration();
+  // outgoingData.AngularVelocity = drone.GetAngularVelocity();
+  // esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
 }
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
 {
-    Serial.println(String("STATUS: ")+(status == ESP_NOW_SEND_SUCCESS));
+  if (status == ESP_NOW_SEND_SUCCESS) {
+    outgoingSuccessCount++;
+  }
+  else if (status == ESP_NOW_SEND_FAIL) {
+    outgoingFailCount++;
+  }
 }
 
 void SetupESPNOW()
@@ -148,7 +163,6 @@ void SetupESPNOW()
     return;
   }
   esp_now_register_recv_cb(OnDataReceived);
-
   esp_now_register_send_cb(OnDataSent);
 
   memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
@@ -177,36 +191,37 @@ void mode_2() {
   oled.setCursor(0, 0);
   oled.println("Mode 2");
 
-  oled.display();
-}
-
-void mode_3() {
-  oled.clearDisplay();
-  oled.setCursor(0, 0);
-  oled.println("Mode 3");
-
-  //calibrate();
+  
 
   oled.display();
 }
 
-void InputUpdate()
+void DebugMode() 
+{
+  Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
+  Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
+  Serial.printf("ptrIncomingData %d\n", ptrIncomingData);
+  Serial.println(String("Attempts:")+outgoingCount);
+  Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
+  Serial.println(String("Received:")+incomingCount);
+}
+
+void Input()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
-  if (digitalRead(BUTTON_C) == 0) ptrMode = &mode_3;
+  if (digitalRead(BUTTON_C) == 0) ptrMode = &DebugMode;
 
   if(Serial.available())
   {
     char ch = Serial.read();
     Serial.println(ch);
     
-
     if (ch == 'a') ptrMode = &mode_1;
     if (ch == 'b') ptrMode = &mode_2;
-    if (ch == 'c') ptrMode = &mode_3;
+    if (ch == 'c') ptrMode = &DebugMode;
 
-    // Pressing 1 - 4 starts or stops coresponding motor
+    // Pressing 1, 2, 3, 4 toggles corresponding motor at full speed or 0
     switch (ch)
     {
     case '1':
@@ -224,7 +239,7 @@ void InputUpdate()
     default:
       break;
     }
-
+    // Pressing - or + increases or decreases motor speed;
     if (ch == '+' || ch == '-')
     {
       if (ch == '+') {
@@ -251,7 +266,7 @@ void InputUpdate()
   }
 }
 
-bool DEBUGGING = false;
+bool DEBUGGING = true;
 void setup() 
 {
   Serial.begin(BAUD_RATE);
@@ -278,7 +293,10 @@ void setup()
   pinMode(BUTTON_C, INPUT_PULLUP);
   
   ptrMode = &mode_1;  
-  
+   if (DEBUGGING) {
+    ptrMode = &DebugMode;
+  }
+
   SetupESPNOW();
 
   drone.Init();
@@ -287,22 +305,38 @@ void setup()
   oled.clearDisplay();
 }
 
-pointerFunction procedureQueue[] = {TimeUpdate, InputUpdate};
+pointerFunction procedureQueue[] = {
+  Time, 
+  Input
+};
+
 void loop() 
 {
   for (size_t i = 0; i < sizeof(procedureQueue)/sizeof(pointerFunction); i++)
   {
-   procedureQueue[0]();
+    procedureQueue[i]();
   }
 
-  if (ptrData != NULL)
-  {
-    duelPrint((*ptrData).leftJoystick, "LEFT JOYSTICK");
-    duelPrint((*ptrData).rightJoystick, "RIGHT JOYSTICK");
-    drone.Update();
-    ptrData = NULL;
-  }
-
+    drone.Update();//drone.Update(input);
+    static unsigned long timeWaitingIncoming = 0;
+    timeWaitingIncoming += deltaTimeMillis;
+    if (ptrIncomingData)
+    {
+      // Print values then update values to zero incase no incoming data makes it during the next frame.
+      duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+      duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+      ptrIncomingData = NULL;
+      timeWaitingIncoming = 0;
+    }
+    else if (timeWaitingIncoming >= 50UL) {
+      timeWaitingIncoming = 0;
+      incomingData.LeftJoystick = Vector3<int>(0, 0, 0);
+      incomingData.RightJoystick = Vector3<int>(0, 0, 0);
+      duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+      duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+    }
+  
+ 
   //clamp range
   clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
   clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
@@ -317,21 +351,13 @@ void loop()
   drone.m3->run(FORWARD);
   drone.m4->run(FORWARD);
  
-  if (ptrMode) {
-    (*ptrMode)();
-  }
-
-  // Assign values
-  outgoingData.Acceleration = drone.GetAcceleration();
-  outgoingData.AngularVelocity = drone.GetAngularVelocity();
-  // Send data
-  esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
-  if (result == ESP_OK)
-  {
-    Serial.println("Data sent!");
-    oled.println(String(sizeof(outgoingData))+" bytes sent. ");
-  } else {
-    Serial.println("Error sending data.");
-    oled.println("Error sending data.");
-  }
+ static unsigned long timer = 0;
+ timer += deltaTimeMillis;
+ if (timer >= 500UL)
+ {
+   timer = 0;
+    if (ptrMode) {
+      (*ptrMode)();
+    }
+ }
 }

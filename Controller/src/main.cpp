@@ -5,7 +5,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Vector.h>
 #include <MuxJoystick.h>
-
+#include <Functions.h>
 #include <esp_now.h>
 #include <WiFi.h>
 
@@ -24,55 +24,63 @@
   #define BUTTON_B 6
   #define BUTTON_C 5
 #endif
-
+const int LEFT_JOYSTICK_MUX_PORT = 0;
+const int RIGHT_JOYSTICK_MUX_PORT = 7;
+MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT, false, false);
+MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT, false, false);
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 
-const int LEFT_JOYSTICK_MUX_PORT = 0;
-const int RIGHT_JOYSTICK_MUX_PORT = 7;
-MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT, false, false);
-MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT, false, false);
 
-typedef struct DroneData
+
+typedef class SendReceiveData
 {
+  public:
+  byte ID;
+};
+
+typedef class DroneData: public SendReceiveData
+{
+  public:
   Vector3<float> Acceleration;
   Vector3<float> AngularVelocity;
 };
 
-typedef struct JoystickData
+typedef class JoystickData: public SendReceiveData
 {
-  Vector3<int> leftJoystick;
-  Vector3<int> rightJoystick;
+  public:
+  Vector3<int> LeftJoystick;
+  Vector3<int> RightJoystick;
 };
 
-DroneData incomingData;
-JoystickData outgoingData;
-uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; 
-uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone Mac = 94:B9:7E:5F:51:40
+
+uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; //Controller MAC = 0C:DC:7E:CA:D2:34
+uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC = 94:B9:7E:5F:51:40
 esp_now_peer_info_t peerInfo;
 
+JoystickData outgoingData;
+const int MAX_DATA_BUFFER_SIZE = 10;
+DroneData incomingData;
+DroneData incomingDataBuffer[255];
 int outgoingSuccessCount = 0;
 int outgoingFailCount = 0;
+int outgoingCount = 0;
 int incomingCount = 0;
 
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
-  if (data != NULL)
-  {
-    Serial.println(++incomingCount);
+    Serial.println("Received: "+ (++incomingCount));
     memcpy(&incomingData, data, sizeof(data));
-  }
 }
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
 {
-  if (status == ESP_NOW_SEND_SUCCESS)
-  {
+  if (status == ESP_NOW_SEND_SUCCESS) {
     outgoingSuccessCount++;
   }
-  else {
+  else if (status == ESP_NOW_SEND_FAIL) {
     outgoingFailCount++;
   }
 }
@@ -81,39 +89,52 @@ void SetupESPNOW()
 {
   WiFi.mode(WIFI_MODE_STA);
   Serial.println("MAC Address: "+WiFi.macAddress());
+  
   if (esp_now_init() != ESP_OK)
   {
     Serial.println("ESP_NOW failed to init");
     return;
   }
+
   esp_now_register_recv_cb(OnDataReceived);
   esp_now_register_send_cb(OnDataSent);
-
   memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
+
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
     Serial.println("ESP_NOW failed to add peer");
+    delay(5000);
     return;
   }
 }
 
 void DisplayMode1() 
 {
+  oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.println("CONTROLLER");
-  oled.println(String("LS: (")+leftJoystick.muxPort+") <"+outgoingData.leftJoystick.x+","+outgoingData.leftJoystick.y+","+outgoingData.leftJoystick.z+">");
-  oled.println(String("RS: (")+rightJoystick.muxPort+") <"+outgoingData.rightJoystick.x+","+outgoingData.rightJoystick.y+","+outgoingData.rightJoystick.z+">");
-  oled.println(String("Sent:")+outgoingSuccessCount+", Received:"+incomingCount);
+  oled.println(String("JS(")+leftJoystick.muxPort+") <X:"+outgoingData.LeftJoystick.x+", Y:"+outgoingData.LeftJoystick.y+"> Pressed:"+outgoingData.LeftJoystick.z);
+  oled.println(String("JS(")+rightJoystick.muxPort+") <X:"+outgoingData.RightJoystick.x+", Y:"+outgoingData.RightJoystick.y+"> Pressed:"+outgoingData.RightJoystick.z);
   oled.display();
 }
 void DisplayMode2() 
 {
+  oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.println("DRONE");
   oled.println(String("Acceleration: ")+"<"+incomingData.Acceleration.x+","+incomingData.Acceleration.y+","+incomingData.Acceleration.z+">");
   oled.println(String("Angular Velocity: ")+"<"+incomingData.AngularVelocity.x+","+incomingData.AngularVelocity.y+","+incomingData.AngularVelocity.z+">");
+  oled.display();
+}
+void DisplayMode3() 
+{
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println(String("Attempts:")+outgoingCount);
+  oled.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
+  oled.println(String("Received:")+incomingCount);
   oled.display();
 }
 
@@ -130,15 +151,8 @@ void setup()
   oled.setCursor(0, 0);
   oled.println("Setup...");
   oled.display();
-  delay(500);
+  delay(100);
   oled.clearDisplay();
-
-  leftJoystick.Start();
-  rightJoystick.Start();
-  ptrMode = &DisplayMode1;
-
-  oled.display();
-  delay(1000);
 
   // INPUT_PULLUP button MUST be connected to GND
   // INPUT_PULLDOWN button MUST be connected to VCC
@@ -147,42 +161,47 @@ void setup()
   pinMode(BUTTON_C, INPUT_PULLUP);
   pinMode(BUTTON_TOGGLE, INPUT_PULLDOWN);
   pinMode(BUTTON_TOGGLE2, INPUT_PULLDOWN);
+  
+  leftJoystick.Start();
+  rightJoystick.Start();
+  ptrMode = &DisplayMode1;
 
   SetupESPNOW();
 
   oled.display();
-  delay(1000);
+  delay(100);
  }
-
-// pointerFunction ptrModes[] = {mode1, mode2};
-// bool m = false;
 
 void loop() 
 {
-  unsigned int count = 0;
-  oled.clearDisplay();
+  static unsigned long time = millis();
+  static unsigned long sendRate = 0;
 
-  // if (digitalRead(BUTTON_A) == 0) ptrMode = mode1;
-  // if (digitalRead(BUTTON_B) == 0) ptrMode = mode2;
-  // if (digitalRead(BUTTON_C) == 0) ptrMode = mode3; 
-  if (digitalRead(BUTTON_TOGGLE) == 1) ptrMode = &DisplayMode1;
-  if (digitalRead(BUTTON_TOGGLE2) == 1) ptrMode = &DisplayMode2;
-
-  // Assign values
-  outgoingData.leftJoystick = leftJoystick.Read();
-  outgoingData.rightJoystick = rightJoystick.Read();
-  // Send data
-  esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
-  if (result == ESP_OK)
+  static int modeIndex = 0;
+  static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3};
+  
+  //
+  if (digitalRead(BUTTON_TOGGLE) == 1) modeIndex--;//ptrMode = &DisplayMode1;
+  if (digitalRead(BUTTON_TOGGLE2) == 1) modeIndex++; //ptrMode = &DisplayMode2;
+  clamp(modeIndex, 0, 2); 
+  ptrMode = modes[modeIndex];
+  
+  // Update values
+  outgoingData.ID = (outgoingData.ID + 1) > sizeof(outgoingData.ID) ? 0 : outgoingData.ID + 1;
+  outgoingData.LeftJoystick = leftJoystick.Read();
+  outgoingData.RightJoystick = rightJoystick.Read();
+  
+  if (millis() - time > sendRate)
   {
-    Serial.println("Data sent!");
-    oled.println(String(sizeof(outgoingData))+" bytes sent. "+count);
-  } else {
-    Serial.println("Error sending data.");
-    oled.println("Error sending data.");
+    time = millis();
+    // Send data
+    esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
+    outgoingCount++;
   }
 
-  (*ptrMode)();
+  if (ptrMode) {
+    (*ptrMode)();
+  }
 
   delay(20);
 }
