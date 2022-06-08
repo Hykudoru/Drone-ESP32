@@ -7,11 +7,10 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MotorShield.h>
 #include <utility/Adafruit_MS_PWMServoDriver.h>
-#include <Drone.h>
+#include "../lib/src/Drone.h"//#include <Drone.h>
 #include <Functions.h>
 #include <esp_now.h>
 #include <WiFi.h>
-
 
 unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
 unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop

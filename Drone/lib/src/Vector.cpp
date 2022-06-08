@@ -1,49 +1,139 @@
 #include "Vector.h"
-// Vector3<double> Vector3<double>::scale(float scalar)
-// {
-//     x *= scalar;
-//     y *= scalar;
-//     z *= scalar;
-    
-//     return this;
-// }
+#include <cmath>
 
-// float Vector3<double>::magnitude()
-// {
-//     return sqrt(x*x + y*y + z*z);
-// }
-
-// Vector3<double> Vector3<double>::normalize()
-// {
-//     float length = magnitude();
-//     x /= length;
-//     y /= length;
-//     z /= length;
-    
-//     return this;
-// }
-
-// Vector3<double> normalized(Vector3<double> vec)
-// {
-//     float length = vec.magnitude();
-//     return new Vector3<double>(x/length, y/length, z/length);
-// }
-
-// template <typename T>
-// T dotProduct(T a, T b, theta)
-// {
-//     return a.normalized*b.normalized*cos(theta);
-// }
+//-------------------------------
+// --------- Vector2 ------------
+//-------------------------------
 template <typename T>
-T dotProduct(Vector3<T> a, Vector3<T> b)
+Vector2<T> Vector2<T>::Add(Vector2<T> other)
+{
+    x += other.x;
+    y += other.y;
+    
+    return this;
+}
+
+template <typename T>
+Vector2<T> Vector2<T>::Scale(T scalar)
+{
+    x *= scalar;
+    y *= scalar;
+    
+    return this;
+}
+
+template <typename T>
+T Vector2<T>::SqrMagnitude()
+{
+    return x*x + y*y;
+}
+
+template <typename T>
+T Vector2<T>::Magnitude()
+{
+    return sqrt(this->SqrMagnitude());
+}
+
+//--------- Normalize() vs Normalized() ---------
+// Normalize() returns vector and modifies the original.
+// Normalized() returns vector without modifying the original.
+
+template <typename T>
+Vector2<T> Vector2<T>::Normalize()
+{
+    T length = this->Magnitude();
+    if (length < 0.00001) {
+        this->x = 0;
+        this->y = 0;
+    }
+    else {
+        this->x /= length;
+        this->y /= length;
+    }
+    
+    return this;
+}
+
+template <typename T>
+Vector2<T> Vector2<T>::Normalized()
+{
+    float length = this->Magnitude();
+    return new Vector2<T>(x/length, y/length);
+}
+
+//-------------------------------
+// --------- Vector3 ------------
+//-------------------------------
+template <typename T>
+Vector3<T> Vector3<T>::Add(Vector3<T> other)
+{
+    x += other.x;
+    y += other.y;
+    z += other.z;
+    
+    return this;
+}
+
+template <typename T>
+Vector3<T> Vector3<T>::Scale(T scalar)
+{
+    x *= scalar;
+    y *= scalar;
+    z *= scalar;
+    
+    return this;
+}
+
+template <typename T>
+T Vector3<T>::SqrMagnitude()
+{
+    return x*x + y*y + z*z;
+}
+template <typename T>
+T Vector3<T>::Magnitude()
+{
+    return sqrt(this->SqrMagnitude());
+}
+
+//--------- Normalize() vs Normalized() ---------
+// Normalize() returns vector and modifies the original.
+// Normalized() returns vector without modifying the original.
+
+template <typename T>
+Vector3<T> Vector3<T>::Normalize()
+{
+    T length = this->Magnitude();
+    if (length < 0.00001) {
+        this->x = 0;
+        this->y = 0;
+        this->z = 0;
+    }
+    else {
+        this->x /= length;
+        this->y /= length;
+        this->z /= length;
+    }
+    
+    return this;
+}
+
+template <typename T>
+Vector3<T> Vector3<T>::Normalized()
+{
+    float length = this->Magnitude();
+    return new Vector3<T>(x/length, y/length, z/length);
+}
+
+template <typename T>
+T DotProduct(Vector3<T> a, Vector3<T> b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-template <typename T>
 // A X B
 // Calcs unit vector perpendicular to both a and b vectors
-Vector3<T> crossProduct(Vector3<T> a, Vector3<T> b)
+template <typename T>
+Vector3<T> CrossProduct(Vector3<T> a, Vector3<T> b)
 {
     /*
     long matrix2x3[3][3] = { }
