@@ -15,12 +15,38 @@ class Vector2
     Vector2(T xVal, T yVal);
     Vector2(T xy[]);
 
-    Vector2<T> Add(Vector2<T> other);
-    Vector2<T> Scale(T scalar);
-    T SqrMagnitude();
-    T Magnitude();
-    Vector2<T> Normalize();
-    Vector2<T> Normalized();
+    T SqrMagnitude()
+    {
+        return x*x + y*y;
+    }
+
+    T Magnitude()
+    {
+        return sqrt(this->SqrMagnitude());
+    }
+
+    //--------- Normalize() vs Normalized() ---------
+    // Normalize() modifies the original
+    // Normalized() returns a normalized vector without modifying the original.
+
+    void Normalize()
+    {
+        float length = this->Magnitude();
+        if (length < 0.00001) {
+            x = 0;
+            y = 0;
+        }
+        else {
+            x /= length;
+            y /= length;
+        }
+    }
+
+    Vector2<T> Normalized()
+    {
+        float length = this->Magnitude();
+        return Vector2<T>((float)x/length, (float)y/length);
+    }
 
     Vector2 operator+(const Vector2& other)
     {
@@ -109,12 +135,40 @@ class Vector3
     Vector3(T xVal, T yVal, T zVal);
     Vector3(T xyz[]);
 
-    Vector3<T> Add(Vector3<T> other);
-    Vector3<T> Scale(T scalar);
-    T SqrMagnitude();
-    T Magnitude();
-    Vector3<T> Normalize();
-    Vector3<T> Normalized();
+    T SqrMagnitude()
+    {
+        return x*x + y*y + z*z;
+    }
+
+    T Magnitude()
+    {
+        return sqrt(this->SqrMagnitude());
+    }
+    
+    //--------- Normalize() vs Normalized() ---------
+    // Normalize() modifies the original
+    // Normalized() returns a normalized vector without modifying the original.
+
+    void Normalize()
+    {
+        float length = this->Magnitude();
+        if (length < 0.00001) {
+            x = 0;
+            y = 0;
+            z = 0;
+        }
+        else {
+            x /= length;
+            y /= length;
+            z /= length;
+        }
+    }
+    
+    Vector3<T> Normalized()
+    {
+        float length = this->Magnitude();
+        return Vector3<T>((float)x/length, (float)y/length, (float)z/length);
+    }
 
     Vector3 operator+(const Vector3& other)
     {
