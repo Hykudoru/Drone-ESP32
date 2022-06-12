@@ -41,14 +41,14 @@ T Vector2<T>::Magnitude()
 template <typename T>
 Vector2<T> Vector2<T>::Normalize()
 {
-    T length = this->Magnitude();
+    float length = this->Magnitude();
     if (length < 0.00001) {
-        this->x = 0;
-        this->y = 0;
+        x = 0;
+        y = 0;
     }
     else {
-        this->x /= length;
-        this->y /= length;
+        x /= length;
+        y /= length;
     }
     
     return this;
@@ -58,7 +58,7 @@ template <typename T>
 Vector2<T> Vector2<T>::Normalized()
 {
     float length = this->Magnitude();
-    return new Vector2<T>(x/length, y/length);
+    return new Vector2<T>((float)x/length, (float)y/length);
 }
 
 //-------------------------------
@@ -102,16 +102,16 @@ T Vector3<T>::Magnitude()
 template <typename T>
 Vector3<T> Vector3<T>::Normalize()
 {
-    T length = this->Magnitude();
+    float length = this->Magnitude();
     if (length < 0.00001) {
-        this->x = 0;
-        this->y = 0;
-        this->z = 0;
+        x = 0;
+        y = 0;
+        z = 0;
     }
     else {
-        this->x /= length;
-        this->y /= length;
-        this->z /= length;
+        x /= length;
+        y /= length;
+        z /= length;
     }
     
     return this;
@@ -121,7 +121,7 @@ template <typename T>
 Vector3<T> Vector3<T>::Normalized()
 {
     float length = this->Magnitude();
-    return new Vector3<T>(x/length, y/length, z/length);
+    return new Vector3<T>((float)x/length, (float)y/length, (float)z/length);
 }
 
 template <typename T>
