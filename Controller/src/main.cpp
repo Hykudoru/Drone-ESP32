@@ -33,7 +33,20 @@ typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 
+unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
+unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
 
+void Time() {
+  
+  static unsigned long prevMillisTime = millis();
+  static unsigned long prevMicrosTime = micros();
+
+  deltaTimeMillis = (millis() - prevMillisTime);
+  prevMillisTime = millis();
+
+  deltaTimeMicros = (micros() - prevMicrosTime);
+  prevMicrosTime = micros();
+}
 
 typedef class SendReceiveData
 {
@@ -175,23 +188,21 @@ void setup()
 void loop() 
 {
   static unsigned long time = millis();
-  static unsigned long sendRate = 0;
-
+  static unsigned long sendDelay = 0;
   static int modeIndex = 0;
   static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3};
-  
-  //
+
   if (digitalRead(BUTTON_TOGGLE) == 1) modeIndex--;//ptrMode = &DisplayMode1;
   if (digitalRead(BUTTON_TOGGLE2) == 1) modeIndex++; //ptrMode = &DisplayMode2;
-  clamp(modeIndex, 0, 2); 
+  constrain(modeIndex, 0, 2); 
   ptrMode = modes[modeIndex];
-  
+
   // Update values
   outgoingData.ID = (outgoingData.ID + 1) > sizeof(outgoingData.ID) ? 0 : outgoingData.ID + 1;
-  outgoingData.LeftJoystick = leftJoystick.Read();
-  outgoingData.RightJoystick = rightJoystick.Read();
+  outgoingData.LeftJoystick = leftJoystick.Read(100);//.Normalize();
+  outgoingData.RightJoystick = rightJoystick.Read(100);//.Normalize();
   
-  if (millis() - time > sendRate)
+  if (millis() - time > sendDelay)
   {
     time = millis();
     // Send data
@@ -204,4 +215,5 @@ void loop()
   }
 
   delay(20);
+  time += millis();
 }

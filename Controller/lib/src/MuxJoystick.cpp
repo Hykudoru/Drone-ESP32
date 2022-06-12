@@ -22,16 +22,16 @@ void MuxJoystick::Start()
   Read();
 }
 
-Vector3<int> MuxJoystick::Read()
+Vector3<int> MuxJoystick::Read(int absMaxRadius)
 {
-  static long t = 0;
+  static int rawMidpoint = 512;
   static int absErrorDeadZoneOffset = 15;
+  static long t = 0;
 
   // Check frame to determine if joystick values are still current; 
   if (t == millis())
   {
-    Vector3<int> axis(x, y, (int)isPressed);
-    return axis;
+    return vec;
   }
 
   // New frame
@@ -39,65 +39,64 @@ Vector3<int> MuxJoystick::Read()
 
   mux.enablePort(muxPort);
 
-  int rawX = rawJoystick.getHorizontal();// 0 - 1023
-  int rawY = rawJoystick.getVertical();// 0 - 1023
+  uint16_t rawX = rawJoystick.getHorizontal();// 0 - 1023
+  uint16_t rawY = rawJoystick.getVertical();// 0 - 1023
   
   // Fix/reverse x axis
-  if (rawX != 512)
+  if (rawX != rawMidpoint)
   {
     rawX = 1023 - rawX;
   }
 
   // Map X-axis Range [-100, 100] 
-  if (rawX < (512 - absErrorDeadZoneOffset))
+  if (rawX < (rawMidpoint - absErrorDeadZoneOffset))
   {
     // Left
-    x = -map(rawX, 0, (512 - absErrorDeadZoneOffset), 100, 0);
+    vec.x = -map(rawX, 0, (rawMidpoint - absErrorDeadZoneOffset), absMaxRadius, 0);
 
   }
-  else if (rawX > (512 + absErrorDeadZoneOffset))
+  else if (rawX > (rawMidpoint + absErrorDeadZoneOffset))
   {
     // Right
-    x = map(rawX, (512 + absErrorDeadZoneOffset), 1023, 0, 100);
+    vec.x = map(rawX, (rawMidpoint + absErrorDeadZoneOffset), 1023, 0, absMaxRadius);
   }
   else {
-    x = 0;
+    vec.x = 0;
   }
 
   // Map Y-axis Range [-100, 100] 
-  if (rawY < (512 - absErrorDeadZoneOffset))
+  if (rawY < (rawMidpoint - absErrorDeadZoneOffset))
   {
     // Down
-    y = -map(rawY, 0, (512 - absErrorDeadZoneOffset), 100, 0);
+    vec.y = -map(rawY, 0, (rawMidpoint - absErrorDeadZoneOffset), absMaxRadius, 0);
 
   }
-  else if (rawY > (512 + absErrorDeadZoneOffset))
+  else if (rawY > (rawMidpoint + absErrorDeadZoneOffset))
   {
     // Up
-    y = map(rawY, (512 + absErrorDeadZoneOffset), 1023, 0, 100);
+    vec.y = map(rawY, (rawMidpoint + absErrorDeadZoneOffset), 1023, 0, absMaxRadius);
   }
   else {
-    y = 0;
+    vec.y = 0;
   }
   
   // Invert axes if physically upside down
   if (invertH) {
-    x *= -1.0;
+    vec.x *= -1.0;
   }
   if (invertV)
   {
-    y *= -1.0;
+    vec.y *= -1.0;
   }
   //Invert button so that pressed state means 1 = true else 0;
   isPressed = !rawJoystick.getButton();
-  
+  vec.z = isPressed;
+
   Serial.println(String("Joystick_")+muxPort
-  +" <x:"+x+", y:"+y+">"+"  pressed:"+(int)(isPressed)
+  +" <x:"+vec.x+", y:"+vec.y+">"+"  pressed:"+(int)(isPressed)
   +" \t raw: <x:"+rawX+", y:"+rawY+">  pressed:"+rawJoystick.getButton());
-  //oled.println(String("JS (")+muxPort+") <"+x+","+y+"> Btn:"+buttonPressed);
   
   mux.disablePort(muxPort);
 
-  Vector3<int> axis(x, y, (int)isPressed);
-  return axis;
+  return vec;
 };

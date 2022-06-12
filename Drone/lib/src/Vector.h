@@ -13,7 +13,7 @@ class Vector2
 
     Vector2();
     Vector2(T xVal, T yVal);
-    Vector2(T xyz[]);
+    Vector2(T xy[]);
 
     Vector2<T> Add(Vector2<T> other);
     Vector2<T> Scale(T scalar);
