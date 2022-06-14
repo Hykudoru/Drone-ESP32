@@ -5,10 +5,14 @@
 #include <Adafruit_SSD1306.h>
 #include <Vector.h>
 #include <MuxJoystick.h>
+#include <Button.h>
 #include <Functions.h>
 #include <esp_now.h>
 #include <WiFi.h>
 
+//-----------Buttons-----------
+// INPUT_PULLUP button MUST be connected to GND
+// INPUT_PULLDOWN button MUST be connected to VCC
 #if defined(ESP32)
 
   const int BAUD_RATE = 115200;
@@ -24,15 +28,23 @@
   #define BUTTON_B 6
   #define BUTTON_C 5
 #endif
-const int LEFT_JOYSTICK_MUX_PORT = 0;
-const int RIGHT_JOYSTICK_MUX_PORT = 7;
+//-----------Buttons-----------
+int BUTTON_PRESS_DEBOUNCE_DELAY = 50;
+Button button1(BUTTON_TOGGLE, INPUT_PULLDOWN);
+Button button2(BUTTON_TOGGLE2, INPUT_PULLDOWN);
+//-----------Joysticks-----------
+#define LEFT_JOYSTICK_MUX_PORT 0
+#define RIGHT_JOYSTICK_MUX_PORT 7
 MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT, false, false);
 MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT, false, false);
+
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
+
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 
+//-----------Time-----------
 unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
 unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
 
@@ -68,7 +80,7 @@ typedef class JoystickData: public SendReceiveData
   Vector3<int> RightJoystick;
 };
 
-
+//-----------ESPNOW-----------
 uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; //Controller MAC = 0C:DC:7E:CA:D2:34
 uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC = 94:B9:7E:5F:51:40
 esp_now_peer_info_t peerInfo;
@@ -76,7 +88,7 @@ esp_now_peer_info_t peerInfo;
 JoystickData outgoingData;
 const int MAX_DATA_BUFFER_SIZE = 10;
 DroneData incomingData;
-DroneData incomingDataBuffer[255];
+DroneData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
 int outgoingSuccessCount = 0;
 int outgoingFailCount = 0;
 int outgoingCount = 0;
@@ -122,7 +134,7 @@ void SetupESPNOW()
     return;
   }
 }
-
+//---------Modes----------
 void DisplayMode1() 
 {
   oled.clearDisplay();
@@ -145,6 +157,7 @@ void DisplayMode3()
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
+  oled.println("DATA");
   oled.println(String("Attempts:")+outgoingCount);
   oled.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
   oled.println(String("Received:")+incomingCount);
@@ -172,8 +185,8 @@ void setup()
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
-  pinMode(BUTTON_TOGGLE, INPUT_PULLDOWN);
-  pinMode(BUTTON_TOGGLE2, INPUT_PULLDOWN);
+  //pinMode(BUTTON_TOGGLE, INPUT_PULLDOWN);
+  //pinMode(BUTTON_TOGGLE2, INPUT_PULLDOWN);
   
   leftJoystick.Start();
   rightJoystick.Start();
@@ -187,13 +200,17 @@ void setup()
 
 void loop() 
 {
-  static unsigned long time = millis();
+  static unsigned long sendTime = millis();
   static unsigned long sendDelay = 0;
   static int modeIndex = 0;
   static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3};
 
-  if (digitalRead(BUTTON_TOGGLE) == 1) modeIndex--;//ptrMode = &DisplayMode1;
-  if (digitalRead(BUTTON_TOGGLE2) == 1) modeIndex++; //ptrMode = &DisplayMode2;
+  button1.Update();
+  button2.Update();
+
+  if (button1.IsPressed()) modeIndex--; //ptrMode = &DisplayMode2;
+  if (button2.IsPressed()) modeIndex++; //ptrMode = &DisplayMode2;
+
   constrain(modeIndex, 0, 2); 
   ptrMode = modes[modeIndex];
 
@@ -202,9 +219,9 @@ void loop()
   outgoingData.LeftJoystick = leftJoystick.Read(100);//.Normalize();
   outgoingData.RightJoystick = rightJoystick.Read(100);//.Normalize();
   
-  if (millis() - time > sendDelay)
+  if (millis() - sendTime > sendDelay)
   {
-    time = millis();
+    sendTime = millis();
     // Send data
     esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
     outgoingCount++;
@@ -215,5 +232,4 @@ void loop()
   }
 
   delay(20);
-  time += millis();
 }
