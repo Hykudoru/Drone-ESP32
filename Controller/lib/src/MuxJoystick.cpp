@@ -22,12 +22,12 @@ void MuxJoystick::Start()
   Read();
 }
 
-Vector3<int> MuxJoystick::Read(int absMaxRadius)
+Vector3<float> MuxJoystick::Read(int absMaxRadius)
 {
   static int rawMidpoint = 512;
-  static int absErrorDeadZoneOffset = 15;
-  static long t = 0;
-
+  static int rawAbsErrorOffset = 15;
+  static unsigned long t = 0;
+  
   // Check frame to determine if joystick values are still current; 
   if (t == millis())
   {
@@ -49,32 +49,32 @@ Vector3<int> MuxJoystick::Read(int absMaxRadius)
   }
 
   // Map X-axis Range [-100, 100] 
-  if (rawX < (rawMidpoint - absErrorDeadZoneOffset))
+  if (rawX < (rawMidpoint - rawAbsErrorOffset))
   {
     // Left
-    vec.x = -map(rawX, 0, (rawMidpoint - absErrorDeadZoneOffset), absMaxRadius, 0);
+    vec.x = -map(rawX, 0, (rawMidpoint - rawAbsErrorOffset), absMaxRadius, 0);
 
   }
-  else if (rawX > (rawMidpoint + absErrorDeadZoneOffset))
+  else if (rawX > (rawMidpoint + rawAbsErrorOffset))
   {
     // Right
-    vec.x = map(rawX, (rawMidpoint + absErrorDeadZoneOffset), 1023, 0, absMaxRadius);
+    vec.x = map(rawX, (rawMidpoint + rawAbsErrorOffset), 1023, 0, absMaxRadius);
   }
   else {
     vec.x = 0;
   }
 
   // Map Y-axis Range [-100, 100] 
-  if (rawY < (rawMidpoint - absErrorDeadZoneOffset))
+  if (rawY < (rawMidpoint - rawAbsErrorOffset))
   {
     // Down
-    vec.y = -map(rawY, 0, (rawMidpoint - absErrorDeadZoneOffset), absMaxRadius, 0);
+    vec.y = -map(rawY, 0, (rawMidpoint - rawAbsErrorOffset), absMaxRadius, 0);
 
   }
-  else if (rawY > (rawMidpoint + absErrorDeadZoneOffset))
+  else if (rawY > (rawMidpoint + rawAbsErrorOffset))
   {
     // Up
-    vec.y = map(rawY, (rawMidpoint + absErrorDeadZoneOffset), 1023, 0, absMaxRadius);
+    vec.y = map(rawY, (rawMidpoint + rawAbsErrorOffset), 1023, 0, absMaxRadius);
   }
   else {
     vec.y = 0;
@@ -88,6 +88,7 @@ Vector3<int> MuxJoystick::Read(int absMaxRadius)
   {
     vec.y *= -1.0;
   }
+  
   //Invert button so that pressed state means 1 = true else 0;
   isPressed = !rawJoystick.getButton();
   vec.z = isPressed;

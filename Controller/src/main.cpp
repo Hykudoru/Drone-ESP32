@@ -64,8 +64,10 @@ typedef class DroneData: public SendReceiveData
 typedef class JoystickData: public SendReceiveData
 {
   public:
-  Vector3<int> LeftJoystick;
-  Vector3<int> RightJoystick;
+  // Vector3<int> LeftJoystick;
+  // Vector3<int> RightJoystick;
+  Vector3<float> LeftJoystick;
+  Vector3<float> RightJoystick;
 };
 
 
@@ -127,9 +129,9 @@ void DisplayMode1()
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println("CONTROLLER");
-  oled.println(String("JS(")+leftJoystick.muxPort+") <X:"+outgoingData.LeftJoystick.x+", Y:"+outgoingData.LeftJoystick.y+"> Pressed:"+outgoingData.LeftJoystick.z);
-  oled.println(String("JS(")+rightJoystick.muxPort+") <X:"+outgoingData.RightJoystick.x+", Y:"+outgoingData.RightJoystick.y+"> Pressed:"+outgoingData.RightJoystick.z);
+  oled.println("JOYSTICK CONTROLLER");
+  oled.println(String("(")+leftJoystick.muxPort+") <X:"+outgoingData.LeftJoystick.x+", Y:"+outgoingData.LeftJoystick.y+"> Pressed:"+outgoingData.LeftJoystick.z);
+  oled.println(String("(")+rightJoystick.muxPort+") <X:"+outgoingData.RightJoystick.x+", Y:"+outgoingData.RightJoystick.y+"> Pressed:"+outgoingData.RightJoystick.z);
   oled.display();
 }
 void DisplayMode2() 
