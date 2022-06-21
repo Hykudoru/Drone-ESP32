@@ -7,7 +7,6 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MotorShield.h>
 #include <utility/Adafruit_MS_PWMServoDriver.h>
-#include <Drone.h>
 #include <Vector.h>
 
 // template <typename T>

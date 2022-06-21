@@ -112,7 +112,7 @@ void Drone::Init()
   delay(1000);
 }
 
-void Drone::Update() 
+void Drone::Update(JoystickControllerData input) 
 {
   if (mpu.getEvent(&a, &g, &temp)) {
     acceleration = Vector3<float>(a.acceleration.v) - accelZeroOffset;
@@ -120,4 +120,18 @@ void Drone::Update()
     /*...
     */
   }
+
+  //clamp range
+  clamp(m1Speed, motorMinSpeed, motorMaxSpeed);
+  clamp(m2Speed, motorMinSpeed, motorMaxSpeed);
+  clamp(m3Speed, motorMinSpeed, motorMaxSpeed);
+  clamp(m4Speed, motorMinSpeed, motorMaxSpeed);
+  m1->setSpeed(m1Speed);
+  m2->setSpeed(m2Speed);
+  m3->setSpeed(m3Speed);
+  m4->setSpeed(m4Speed);
+  m1->run(FORWARD);
+  m2->run(BACKWARD);
+  m3->run(FORWARD);
+  m4->run(BACKWARD);
 }

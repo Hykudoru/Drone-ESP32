@@ -9,6 +9,7 @@
 #include <utility/Adafruit_MS_PWMServoDriver.h>
 #include "../lib/src/Drone.h"//#include <Drone.h>
 #include <Functions.h>
+#include <Data.h>
 #include <esp_now.h>
 #include <WiFi.h>
 
@@ -41,6 +42,7 @@ void delay(unsigned long milliSec, void(*callback)(void))
 
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
+  const uint16_t ADC_RESOLUTION = 4095; // 0 - 4095
 #else
   const int BAUD_RATE = 9600;
 #endif
@@ -95,46 +97,30 @@ void duelPrint(Vector3<float> vec, String header = "")
 
 Drone drone = Drone();
 
-typedef class SendReceiveData
-{
-  public:
-  byte ID;
-};
-
-typedef class DroneData: public SendReceiveData
-{
-  public:
-  Vector3<float> Acceleration;
-  Vector3<float> AngularVelocity;
-};
-
-typedef class JoystickData: public SendReceiveData
-{
-  public:
-  Vector3<int> LeftJoystick;
-  Vector3<int> RightJoystick;
-};
-
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
 uint8_t broadcastMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; // controller MAC address
 esp_now_peer_info_t peerInfo;
 
 DroneData outgoingData;
-JoystickData incomingData;
-JoystickData* ptrIncomingData = NULL;
+JoystickControllerData incomingData;
+JoystickControllerData* ptrInput = NULL;
+const unsigned long INCOMING_DATA_LIFETIME = 50UL;
 const int MAX_DATA_BUFFER_SIZE = 10;
 SendReceiveData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
 int outgoingSuccessCount = 0;
 int outgoingFailCount = 0;
 int outgoingCount = 0;
 int incomingCount = 0;
+unsigned long timeSinceLastIncoming = 0;
+
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
   // static int count = -1;
   // count = (count + 1) > MAX_DATA_BUFFER_SIZE ? 0 : count + 1;
+  timeSinceLastIncoming = 0;
   incomingCount++;
   memcpy(&incomingData, data, sizeof(incomingData));
-  ptrIncomingData = &incomingData;
+  ptrInput = &incomingData;
 
   Serial.println("------INCOMING------");
   // outgoingData.Acceleration = drone.GetAcceleration();
@@ -189,9 +175,7 @@ void mode_2() {
   oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.println("Mode 2");
-
-  
-
+  /**/
   oled.display();
 }
 
@@ -199,7 +183,6 @@ void DebugMode()
 {
   Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
   Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
-  Serial.printf("ptrIncomingData %d\n", ptrIncomingData);
   Serial.println(String("Attempts:")+outgoingCount);
   Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
   Serial.println(String("Received:")+incomingCount);
@@ -207,10 +190,18 @@ void DebugMode()
 
 void Input()
 {
+
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
   if (digitalRead(BUTTON_C) == 0) ptrMode = &DebugMode;
+  
+  byte value = (byte) map(ptrInput->Potentiomter, 0, ADC_RESOLUTION, 0, 255);
+  drone.m1Speed = value; 
+  drone.m2Speed = value;
+  drone.m3Speed = value;
+  drone.m4Speed = value;
 
+//---------SERIAL INPUT-------------
   if(Serial.available())
   {
     char ch = Serial.read();
@@ -316,39 +307,19 @@ void loop()
     procedureQueue[i]();
   }
 
-    drone.Update();//drone.Update(input);
-    static unsigned long timeWaitingIncoming = 0;
-    timeWaitingIncoming += deltaTimeMillis;
-    if (ptrIncomingData)
-    {
-      // Print values then update values to zero incase no incoming data makes it during the next frame.
-      duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-      duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
-      ptrIncomingData = NULL;
-      timeWaitingIncoming = 0;
-    }
-    else if (timeWaitingIncoming >= 50UL) {
-      timeWaitingIncoming = 0;
-      incomingData.LeftJoystick = Vector3<int>(0, 0, 0);
-      incomingData.RightJoystick = Vector3<int>(0, 0, 0);
-      duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-      duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
-    }
+  //----------REMOTE INPUT-------------
+  // Checks for stale data. Simulates continuous input if the last valid input state becomes stale/old from waiting too long for new incoming data.
+  timeSinceLastIncoming += deltaTimeMillis;
+  if (timeSinceLastIncoming >= INCOMING_DATA_LIFETIME) {
+    ptrInput->LeftJoystick = Vector3<float>(0,0,0);
+    ptrInput->RightJoystick = Vector3<float>(0,0,0);
+    timeSinceLastIncoming = 0;
+  }
+
+  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
   
- 
-  //clamp range
-  clamp(drone.m1Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-  clamp(drone.m2Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-  clamp(drone.m3Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-  clamp(drone.m4Speed, drone.motorMinSpeed, drone.motorMaxSpeed);
-  drone.m1->setSpeed(drone.m1Speed);
-  drone.m2->setSpeed(drone.m2Speed);
-  drone.m3->setSpeed(drone.m3Speed);
-  drone.m4->setSpeed(drone.m4Speed);
-  drone.m1->run(FORWARD);
-  drone.m2->run(FORWARD);
-  drone.m3->run(FORWARD);
-  drone.m4->run(FORWARD);
+  drone.Update(*ptrInput);//drone.Update(input);
  
  static unsigned long timer = 0;
  timer += deltaTimeMillis;

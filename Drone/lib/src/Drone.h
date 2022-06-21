@@ -1,4 +1,5 @@
 #include <Vector.h>
+#include <Data.h>
 #include <Adafruit_MotorShield.h>
 #include <utility/Adafruit_MS_PWMServoDriver.h>
 
@@ -39,7 +40,7 @@ class Drone
         //Drone(Adafruit_MPU6050 *mpu, Adafruit_MotorShield *motorShield);
         ~Drone();
         void Init();
-        void Update();
+        void Update(JoystickControllerData input);
         Vector3<float> GetAcceleration();
         Vector3<float> GetAngularVelocity();
         // Vector3 GetPosition();
