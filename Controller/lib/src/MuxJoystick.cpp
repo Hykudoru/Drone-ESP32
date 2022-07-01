@@ -22,16 +22,18 @@ void MuxJoystick::Start()
   Read();
 }
 
-Vector3<float> MuxJoystick::Read(int absMaxRadius)
+Vector3<float> MuxJoystick::Read(int distanceRadius)
 {
-  static int rawMidpoint = 512;
+  static const int joystickADCResolution = 1024;
+  static int rawMidpoint = joystickADCResolution / 2;
   static int rawAbsErrorOffset = 15;
   static unsigned long t = 0;
-  
+  Vector3<float> vec3;
+
   // Check frame to determine if joystick values are still current; 
   if (t == millis())
   {
-    return vec;
+    return vec3;
   }
 
   // New frame
@@ -52,52 +54,54 @@ Vector3<float> MuxJoystick::Read(int absMaxRadius)
   if (rawX < (rawMidpoint - rawAbsErrorOffset))
   {
     // Left
-    vec.x = -map(rawX, 0, (rawMidpoint - rawAbsErrorOffset), absMaxRadius, 0);
+    vec2.x = -map(rawX, 0, (rawMidpoint - rawAbsErrorOffset), distanceRadius, 0);
 
   }
   else if (rawX > (rawMidpoint + rawAbsErrorOffset))
   {
     // Right
-    vec.x = map(rawX, (rawMidpoint + rawAbsErrorOffset), 1023, 0, absMaxRadius);
+    vec2.x = map(rawX, (rawMidpoint + rawAbsErrorOffset), 1023, 0, distanceRadius);
   }
   else {
-    vec.x = 0;
+    vec2.x = 0;
   }
 
   // Map Y-axis Range [-100, 100] 
   if (rawY < (rawMidpoint - rawAbsErrorOffset))
   {
     // Down
-    vec.y = -map(rawY, 0, (rawMidpoint - rawAbsErrorOffset), absMaxRadius, 0);
+    vec2.y = -map(rawY, 0, (rawMidpoint - rawAbsErrorOffset), distanceRadius, 0);
 
   }
   else if (rawY > (rawMidpoint + rawAbsErrorOffset))
   {
     // Up
-    vec.y = map(rawY, (rawMidpoint + rawAbsErrorOffset), 1023, 0, absMaxRadius);
+    vec2.y = map(rawY, (rawMidpoint + rawAbsErrorOffset), 1023, 0, distanceRadius);
   }
   else {
-    vec.y = 0;
+    vec2.y = 0;
   }
   
   // Invert axes if physically upside down
   if (invertH) {
-    vec.x *= -1.0;
+    vec2.x *= -1.0;
   }
   if (invertV)
   {
-    vec.y *= -1.0;
+    vec2.y *= -1.0;
   }
   
+  vec3 = vec2;
+
   //Invert button so that pressed state means 1 = true else 0;
   isPressed = !rawJoystick.getButton();
-  vec.z = isPressed;
+  vec3.z = isPressed;
 
   Serial.println(String("Joystick_")+muxPort
-  +" <x:"+vec.x+", y:"+vec.y+">"+"  pressed:"+(int)(isPressed)
+  +" <x:"+vec3.x+", y:"+vec3.y+">"+"  pressed:"+(int)(isPressed)
   +" \t raw: <x:"+rawX+", y:"+rawY+">  pressed:"+rawJoystick.getButton());
   
   mux.disablePort(muxPort);
-
-  return vec;
+  
+  return vec3;
 };

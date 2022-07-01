@@ -7,7 +7,7 @@ class MuxJoystick
   //int x = 0;// [-100, 100]
   //int y = 0;// [-100, 100]
   bool isPressed = 0; // 1
-  Vector3<float> vec;
+  Vector2<float> vec2;
 public:  
   int muxPort;
   bool invertH; 
@@ -17,10 +17,10 @@ public:
     this->muxPort = muxPort;
     invertH = invertHorizontal;
     invertV = invertVertical;
+    vec2 = Vector2<float>();
   }
   ~MuxJoystick() {}
   void Start();
-  
-  Vector3<float> Read(int absMaxRadius = 512);
+  Vector3<float> Read(int distanceRadius = 512);
 };
 #endif

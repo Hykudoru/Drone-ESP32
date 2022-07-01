@@ -7,11 +7,13 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MotorShield.h>
 #include <utility/Adafruit_MS_PWMServoDriver.h>
-#include "../lib/src/Drone.h"//#include <Drone.h>
-#include <Functions.h>
-#include <Data.h>
 #include <esp_now.h>
 #include <WiFi.h>
+//Alex Lib
+#include <Functions.h>
+#include <WirelessData.h>
+#include "../lib/src/Drone.h"//#include <Drone.h>
+
 
 unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
 unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
@@ -57,56 +59,24 @@ int ACCEL_GYRO_ADDR = 0x68;
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
 
-#if defined(oled)
-#else
+// #if defined(oled)
+// #else
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
-#endif
-
-void duelPrint(Vector3<int> vec, String header = "")
-{
-    Serial.println("");
-
-    Serial.print(header); 
-    Serial.print(vec.x); Serial.print(", ");
-    Serial.print(vec.y); Serial.print(", ");
-    Serial.println(vec.z); 
-
-    oled.print(header); 
-    oled.print(vec.x); oled.print(", ");
-    oled.print(vec.y); oled.print(", ");
-    oled.println(vec.z); 
-
-    oled.display();
-}
-void duelPrint(Vector3<float> vec, String header = "")
-{
-    Serial.println("");
-
-    Serial.print(header); 
-    Serial.print(vec.x); Serial.print(", ");
-    Serial.print(vec.y); Serial.print(", ");
-    Serial.println(vec.z); 
-
-    oled.print(header); 
-    oled.print(vec.x); oled.print(", ");
-    oled.print(vec.y); oled.print(", ");
-    oled.println(vec.z); 
-
-    oled.display();
-}
+// #endif
 
 Drone drone = Drone();
 
+//================ ESPNOW WIRELESS COMMUNICATION DATA VARS ================
+
+const int MAX_DATA_BUFFER_SIZE = 10;
+const unsigned long INCOMING_DATA_LIFETIME = 50UL;
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
 uint8_t broadcastMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; // controller MAC address
 esp_now_peer_info_t peerInfo;
-
 DroneData outgoingData;
 JoystickControllerData incomingData;
 JoystickControllerData* ptrInput = NULL;
-const unsigned long INCOMING_DATA_LIFETIME = 50UL;
-const int MAX_DATA_BUFFER_SIZE = 10;
-SendReceiveData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
+WirelessData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
 int outgoingSuccessCount = 0;
 int outgoingFailCount = 0;
 int outgoingCount = 0;
@@ -160,6 +130,7 @@ void SetupESPNOW()
   }
 }
 
+//--------------MODES-------------
 void mode_1() {
   oled.clearDisplay();
   oled.setCursor(0, 0);
@@ -245,15 +216,16 @@ void Input()
         --drone.m4Speed;
       }
       
-      Serial.println("-----------");
-      Serial.println(String("Motor 1: ")+drone.m1Speed);
-      Serial.println(String("Motor 2: ")+drone.m2Speed);
-      Serial.println(String("Motor 3: ")+drone.m3Speed);
-      Serial.println(String("Motor 4: ")+drone.m4Speed);
-      Serial.println("-----------");
+      
     }
     //delay(10);
   }
+    Serial.println("-----------");
+    Serial.println(String("Motor 1: ")+drone.m1Speed);
+    Serial.println(String("Motor 2: ")+drone.m2Speed);
+    Serial.println(String("Motor 3: ")+drone.m3Speed);
+    Serial.println(String("Motor 4: ")+drone.m4Speed);
+    Serial.println("-----------");
 }
 
 bool DEBUGGING = true;

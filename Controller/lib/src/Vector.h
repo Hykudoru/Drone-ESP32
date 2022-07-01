@@ -1,6 +1,9 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+template <typename T>
+class Vector3;
+
 //-------------------------------
 // --------- Vector2 ------------
 //-------------------------------
@@ -103,7 +106,10 @@ class Vector2
         this->y /= scalar;
         return *this;
     }
+
+    operator Vector3<T>();
 };
+
 template <typename T>
 Vector2<T>::Vector2()
 {
@@ -236,7 +242,30 @@ class Vector3
         this->z /= scalar;
         return *this;
     }
+
+    operator Vector2<T>();
 };
+
+//================================
+template <typename T>
+Vector2<T>::operator Vector3<T>()
+{
+        Vector3<T> vec3;
+        vec3.x = x;
+        vec3.y = y;
+        vec3.z = 0;
+        return vec3;
+}
+
+template <typename T>
+Vector3<T>::operator Vector2<T>()
+{
+        Vector2<T> vec2;
+        vec2.x = x;
+        vec2.y = y;
+        return vec2;
+}
+//===============================
 
 template <typename T>
 Vector3<T>::Vector3()

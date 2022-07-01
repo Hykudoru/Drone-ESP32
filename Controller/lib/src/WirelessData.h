@@ -2,20 +2,20 @@
 #define DATA_H
 #include <Vector.h>
 
-typedef class SendReceiveData
+typedef struct WirelessData
 {
   public:
   int ID;
 };
-
-typedef class DroneData: public SendReceiveData
+//ESPNOW limits 0-250 bytes
+typedef struct DroneData: public WirelessData
 {
   public:
   Vector3<float> Acceleration;
   Vector3<float> AngularVelocity;
 };
-
-typedef class JoystickControllerData: public SendReceiveData
+//ESPNOW limits 0-250 bytes
+typedef struct JoystickControllerData: public WirelessData
 {
   public:
   Vector3<float> LeftJoystick;

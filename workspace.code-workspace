@@ -9,5 +9,29 @@
 			"path": "Drone"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"deque": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"exception": "cpp",
+			"functional": "cpp",
+			"random": "cpp",
+			"*.tcc": "cpp",
+			"fstream": "cpp",
+			"initializer_list": "cpp",
+			"istream": "cpp",
+			"new": "cpp",
+			"ostream": "cpp",
+			"sstream": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"system_error": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"typeinfo": "cpp"
+		}
+	}
 }

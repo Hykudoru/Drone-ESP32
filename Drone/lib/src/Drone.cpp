@@ -8,6 +8,7 @@
 
 //Adafruit_MPU6050 mpu;
 sensors_event_t a, g, temp;
+
 // Adafruit_MotorShield motorShield = Adafruit_MotorShield();
 // Adafruit_DCMotor *m1 = motorShield.getMotor(1);
 // Adafruit_DCMotor *m2 = motorShield.getMotor(2);
@@ -131,7 +132,7 @@ void Drone::Update(JoystickControllerData input)
   m3->setSpeed(m3Speed);
   m4->setSpeed(m4Speed);
   m1->run(FORWARD);
-  m2->run(BACKWARD);
+  m2->run(FORWARD);
   m3->run(FORWARD);
-  m4->run(BACKWARD);
+  m4->run(FORWARD);
 }

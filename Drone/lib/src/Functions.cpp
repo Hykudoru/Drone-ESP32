@@ -12,6 +12,8 @@
 #include <Vector.h>
 #include "Functions.h"
 
+extern Adafruit_SSD1306 oled;
+
 byte clamp(byte &val, byte min, byte max) {
   if (val > max) 
   {
@@ -56,4 +58,38 @@ void print(Vector3<float> vec, char header[])
     Serial.print(vec.x); Serial.print(", ");
     Serial.print(vec.y); Serial.print(", ");
     Serial.println(vec.z); 
+}
+
+
+void duelPrint(Vector3<int> vec, String header)
+{
+    Serial.println("");
+
+    Serial.print(header); 
+    Serial.print(vec.x); Serial.print(", ");
+    Serial.print(vec.y); Serial.print(", ");
+    Serial.println(vec.z); 
+
+    oled.print(header); 
+    oled.print(vec.x); oled.print(", ");
+    oled.print(vec.y); oled.print(", ");
+    oled.println(vec.z); 
+
+    oled.display();
+}
+void duelPrint(Vector3<float> vec, String header)
+{
+    Serial.println("");
+
+    Serial.print(header); 
+    Serial.print(vec.x); Serial.print(", ");
+    Serial.print(vec.y); Serial.print(", ");
+    Serial.println(vec.z); 
+
+    oled.print(header); 
+    oled.print(vec.x); oled.print(", ");
+    oled.print(vec.y); oled.print(", ");
+    oled.println(vec.z); 
+
+    oled.display();
 }
