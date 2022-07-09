@@ -20,7 +20,6 @@ typedef struct JoystickControllerData: public WirelessData
   public:
   Vector3<float> LeftJoystick;
   Vector3<float> RightJoystick;
-  uint16_t Potentiomter; 
-  uint16_t Potentiomter2; 
+  uint16_t Potentiometer;
 };
 #endif

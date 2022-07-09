@@ -22,8 +22,8 @@
   #define POTENTIOMETER_1 0b100111// A3 (39)
   #define POTENTIOMETER_2 0b100100// A4 (36)
   const uint16_t ADC_RESOLUTION = 4095; // 0 - 4095
-  uint16_t potentiometerValue = 0;
-  uint16_t potentiometerValue2 = 0;
+  uint16_t rawPotentiometer = 0;
+  uint16_t rawPotentiometer2 = 0;
 #endif
 #if defined(__AVR_ATmega32U4__)
   const int BAUD_RATE = 9600;
@@ -67,6 +67,7 @@ int outgoingSuccessCount = 0;
 int outgoingFailCount = 0;
 int outgoingCount = 0;
 int incomingCount = 0;
+unsigned long sendDelay = 0;
 
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
@@ -121,8 +122,8 @@ void DisplayMode2()
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println(String("Potentiometer: ")+outgoingData.Potentiomter);
-  oled.println(String("Potentiometer 2: ")+outgoingData.Potentiomter2);
+  oled.println(String("Potentiometer(1) raw:")+rawPotentiometer);
+  oled.println(String("Potentiometer(2): ")+rawPotentiometer2);
   // oled.println("DRONE");
   // oled.println(String("Acceleration: ")+"<"+incomingData.Acceleration.x+","+incomingData.Acceleration.y+","+incomingData.Acceleration.z+">");
   // oled.println(String("Angular Velocity: ")+"<"+incomingData.AngularVelocity.x+","+incomingData.AngularVelocity.y+","+incomingData.AngularVelocity.z+">");
@@ -132,9 +133,9 @@ void DisplayMode3()
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println(String("Attempts:")+outgoingCount);
-  oled.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
-  oled.println(String("Received:")+incomingCount);
+  oled.println(String("Outgoing:")+outgoingCount+" Intervals: "+sendDelay+"ms");
+  oled.println(String("Success:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
+  oled.println(String("Incoming:")+incomingCount);
   oled.display();
 }
 
@@ -172,32 +173,32 @@ void setup()
   delay(100);
  }
 
+
 void loop() 
 {
-  static unsigned long time = millis();
-  static unsigned long sendDelay = 0;
+  static unsigned long lastTimeStamp = millis();
   static int modeIndex = 0;
   static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3};
 
   if (digitalRead(BUTTON_1) == 1) modeIndex--;//ptrMode = &DisplayMode1;
   if (digitalRead(BUTTON_2) == 1) modeIndex++; //ptrMode = &DisplayMode2;
-  constrain(modeIndex, 0, 2); 
+  constrain(modeIndex, 0, 2);
   ptrMode = modes[modeIndex];
 
-potentiometerValue = analogRead(POTENTIOMETER_1);
-potentiometerValue2 = analogRead(POTENTIOMETER_2);
-
+  rawPotentiometer = analogRead(POTENTIOMETER_1);
+  sendDelay = map(rawPotentiometer, 0, ADC_RESOLUTION, 1000, 0);
+  rawPotentiometer2 = analogRead(POTENTIOMETER_2);
+  
   // Update values
   outgoingData.ID = (outgoingData.ID + 1) > sizeof(outgoingData.ID) ? 0 : outgoingData.ID + 1;
-  outgoingData.Potentiomter = potentiometerValue;
-  outgoingData.Potentiomter2 = potentiometerValue2;
+  outgoingData.Potentiometer = rawPotentiometer2;
   outgoingData.LeftJoystick = leftJoystick.Read(100);//.Normalize();
   outgoingData.RightJoystick = rightJoystick.Read(100);//.Normalize();
   
-  time += millis();
-  if (millis() - time > sendDelay)
+  //time += millis();
+  if (millis() - lastTimeStamp > sendDelay)
   {
-    time = millis();
+    lastTimeStamp = millis();
     // Send data
     esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
     outgoingCount++;

@@ -52,7 +52,7 @@ const int I2C_ADDR = 0x3C; // Can be shared with other I2C devices
 const int BUTTON_A = 15;//GPIO 15 or A8
 const int BUTTON_B = 32;
 const int BUTTON_C = 14;
-
+const int LED_1 = LED_BUILTIN;
 int ACCEL_GYRO_ADDR = 0x68;
 
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
@@ -67,7 +67,6 @@ Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 Drone drone = Drone();
 
 //================ ESPNOW WIRELESS COMMUNICATION DATA VARS ================
-
 const int MAX_DATA_BUFFER_SIZE = 10;
 const unsigned long INCOMING_DATA_LIFETIME = 50UL;
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
@@ -77,26 +76,25 @@ DroneData outgoingData;
 JoystickControllerData incomingData;
 JoystickControllerData* ptrInput = NULL;
 WirelessData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
-int outgoingSuccessCount = 0;
-int outgoingFailCount = 0;
-int outgoingCount = 0;
-int incomingCount = 0;
+unsigned int outgoingSuccessCount = 0;
+unsigned int outgoingFailCount = 0;
+unsigned int outgoingCount = 0;
+unsigned int incomingCount = 0;
 unsigned long timeSinceLastIncoming = 0;
+bool newInputReceived = false;
 
 void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
 {
   // static int count = -1;
   // count = (count + 1) > MAX_DATA_BUFFER_SIZE ? 0 : count + 1;
   timeSinceLastIncoming = 0;
+  newInputReceived = true;
   incomingCount++;
   memcpy(&incomingData, data, sizeof(incomingData));
   ptrInput = &incomingData;
 
   Serial.println("------INCOMING------");
-  // outgoingData.Acceleration = drone.GetAcceleration();
-  // outgoingData.AngularVelocity = drone.GetAngularVelocity();
-  // esp_err_t result = esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
-}
+ }
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
 {
@@ -152,6 +150,12 @@ void mode_2() {
 
 void DebugMode() 
 {
+  byte value = (byte) map(ptrInput->Potentiometer, 0, ADC_RESOLUTION, 0, 255);
+  drone.m1Speed = value; 
+  drone.m2Speed = value;
+  drone.m3Speed = value;
+  drone.m4Speed = value;
+
   Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
   Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
   Serial.println(String("Attempts:")+outgoingCount);
@@ -165,12 +169,6 @@ void Input()
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
   if (digitalRead(BUTTON_C) == 0) ptrMode = &DebugMode;
-  
-  byte value = (byte) map(ptrInput->Potentiomter, 0, ADC_RESOLUTION, 0, 255);
-  drone.m1Speed = value; 
-  drone.m2Speed = value;
-  drone.m3Speed = value;
-  drone.m4Speed = value;
 
 //---------SERIAL INPUT-------------
   if(Serial.available())
@@ -253,7 +251,8 @@ void setup()
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
-  
+  pinMode(LED_1, OUTPUT);
+
   ptrMode = &mode_1;  
    if (DEBUGGING) {
     ptrMode = &DebugMode;
@@ -261,8 +260,28 @@ void setup()
 
   SetupESPNOW();
 
+  // LED BLINKS while waiting for external input or command to begin calibrating drone.
+  while((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false)
+  {
+    Serial.println("Press & hold down both joysticks to begin calibrating drone.");
+    digitalWrite(LED_1, HIGH);
+    delay(200);
+    digitalWrite(LED_1, LOW);
+    delay(200);
+  }
+
   drone.Init();
-  
+  //LED BLINKS rapidly then off to indicate calibration completed and in ready state.
+  { 
+    for (size_t i = 0; i < 4; i++)
+    {
+      digitalWrite(LED_1, HIGH);
+      delay(100);
+      digitalWrite(LED_1, LOW);
+      delay(100);
+    }
+  }
+
   delay(500);
   oled.clearDisplay();
 }
@@ -287,7 +306,7 @@ void loop()
     ptrInput->RightJoystick = Vector3<float>(0,0,0);
     timeSinceLastIncoming = 0;
   }
-
+  
   duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
   duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
   
