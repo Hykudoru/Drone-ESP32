@@ -150,6 +150,9 @@ void mode_2() {
 
 void DebugMode() 
 {
+  unsigned long t = 0;
+  unsigned long serialUpdateDelay = 50;
+
   byte value = (byte) map(ptrInput->Potentiometer, 0, ADC_RESOLUTION, 0, 255);
   drone.m1Speed = value; 
   drone.m2Speed = value;
@@ -248,6 +251,8 @@ void setup()
   oled.println("Setup...");
   oled.display();
   
+  // INPUT_PULLUP button MUST be connected to GND
+  // INPUT_PULLDOWN button MUST be connected to VCC
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
@@ -259,8 +264,9 @@ void setup()
   }
 
   SetupESPNOW();
-
-  // LED BLINKS while waiting for external input or command to begin calibrating drone.
+  
+  // WAITING COMMAND/INPUT: LED BLINKS slowly.
+   // Note: Must place drone on flat surface before calibrating.
   while((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false)
   {
     Serial.println("Press & hold down both joysticks to begin calibrating drone.");
@@ -270,8 +276,12 @@ void setup()
     delay(200);
   }
 
+  // CALIBRATING: LED ON. 
+  // Note: Do not touch drone while calibrating.
+  digitalWrite(LED_1, HIGH);
   drone.Init();
-  //LED BLINKS rapidly then off to indicate calibration completed and in ready state.
+
+  // AFTER/DONE CALIBRATING: LED BLINKS rapidly then OFF.
   { 
     for (size_t i = 0; i < 4; i++)
     {
