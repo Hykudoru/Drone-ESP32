@@ -3,19 +3,19 @@
 #include <Arduino.h>
 
 int BUTTON_PRESS_DEBOUNCE_DELAY = 50;
-extern pointerFunction mainLoop;
 
 class Button
 {
-    int currentState = 0;
-    int prevSteadyState = 0;
-    int prevFlickerState;
+    int state = 0;
     unsigned long pressTime;
-    bool isPressed = false;
-    
+
     uint8_t pin;
     uint8_t mode;
 public:
+    const int STATE_BUTTON_UNSTEADY = -1;
+    const int STATE_BUTTON_UP = 0;
+    const int STATE_BUTTON_PRESSED = 1;
+
     Button(uint8_t pin, uint8_t mode = INPUT_PULLUP)
     {
         PinMode(pin, mode);
@@ -29,28 +29,8 @@ public:
         pinMode(pin, mode);
     }
 
-    void Update()
-    {
-        currentState = digitalRead(pin);
-
-        if (currentState != prevFlickerState) {
-            pressTime = millis();
-            prevFlickerState = currentState;
-        } 
-        if ((millis() - pressTime) > BUTTON_PRESS_DEBOUNCE_DELAY) {
-            //if steady state changed
-            if (currentState != prevSteadyState) {
-                isPressed = (currentState == 1);
-                prevSteadyState = currentState;
-                pressTime = millis();
-            }
-        }
-    }
-    
-    bool IsPressed()
-    {
-        return isPressed;        
-    }
+    void Update();
+    int GetState() {return state;}
+    int GetPressTime() {return pressTime;}
 };
-
 #endif
