@@ -18,12 +18,9 @@
   #define BUTTON_C 14
   #define BUTTON_1 27
   #define BUTTON_2 4
-  
   #define POTENTIOMETER_1 0b100111// A3 (39)
   #define POTENTIOMETER_2 0b100100// A4 (36)
   const uint16_t ADC_RESOLUTION = 4095; // 0 - 4095
-  uint16_t rawPotentiometer = 0;
-  uint16_t rawPotentiometer2 = 0;
 #endif
 #if defined(__AVR_ATmega32U4__)
   const int BAUD_RATE = 9600;
@@ -35,11 +32,20 @@ const int LEFT_JOYSTICK_MUX_PORT = 0;
 const int RIGHT_JOYSTICK_MUX_PORT = 7;
 MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT, false, false);
 MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT, false, false);
+
+uint16_t rawPot1Value;
+uint16_t rawPot2Value;
+unsigned long* ptrPot1;
+unsigned long* ptrPot2;
+
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
+
+
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
 
+unsigned long timeDelay = 0;
 unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
 unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
 
@@ -55,6 +61,7 @@ void Time() {
   prevMicrosTime = micros();
 }
 
+//================ ESPNOW WIRELESS COMMUNICATION DATA VARS ================
 
 uint8_t selfMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; //Controller MAC = 0C:DC:7E:CA:D2:34
 uint8_t broadcastMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC = 94:B9:7E:5F:51:40
@@ -112,38 +119,102 @@ void SetupESPNOW()
 
 void DisplayMode1() 
 {
+  static bool bindingSet = false;
+  if (!ptrPot1 || ptrPot1 != &sendDelay) {
+    bindingSet = false;
+  }
+  if (outgoingData.RightJoystick.z)
+  {
+    bindingSet = !bindingSet;
+    ptrPot1 = bindingSet ? &sendDelay : NULL;
+  }
+
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println(String("(")+leftJoystick.muxPort+") X:"+outgoingData.LeftJoystick.x+" Y:"+outgoingData.LeftJoystick.y+" Z:"+outgoingData.LeftJoystick.z);
-  oled.println(String("(")+rightJoystick.muxPort+") X:"+outgoingData.RightJoystick.x+" Y:"+outgoingData.RightJoystick.y+" Z:"+outgoingData.RightJoystick.z);
+  oled.setTextColor(WHITE, BLACK);
+  if (bindingSet) {
+    oled.setTextColor(BLACK, WHITE);
+  }
+  oled.println(String("Send rate:")+1000.0f/(float)sendDelay+"Hz");
+  oled.setTextColor(WHITE, BLACK);
+  oled.println(String("Outgoing:")+outgoingCount);
+  oled.println(String("Success:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
+  oled.println(String("Incoming:")+incomingCount);
   oled.display();
 }
+
 void DisplayMode2() 
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println(String("Potentiometer(1) raw:")+rawPotentiometer);
-  oled.println(String("Potentiometer(2): ")+rawPotentiometer2);
-  // oled.println("DRONE");
-  // oled.println(String("Acceleration: ")+"<"+incomingData.Acceleration.x+","+incomingData.Acceleration.y+","+incomingData.Acceleration.z+">");
-  // oled.println(String("Angular Velocity: ")+"<"+incomingData.AngularVelocity.x+","+incomingData.AngularVelocity.y+","+incomingData.AngularVelocity.z+">");
+  oled.println(String("Left Joystick (")+(bool)outgoingData.LeftJoystick.z+")");
+  oled.println(String("")+"X:"+outgoingData.LeftJoystick.x+" Y:"+outgoingData.LeftJoystick.y);
+  oled.println(String("Right Joystick (")+(bool)outgoingData.RightJoystick.z+")");
+  oled.println(String("")+"X:"+outgoingData.RightJoystick.x+" Y:"+outgoingData.RightJoystick.y);
   oled.display();
 }
+
 void DisplayMode3() 
 {
   oled.clearDisplay();
   oled.setCursor(0, 0);
-  oled.println(String("Outgoing:")+outgoingCount+" Intervals: "+sendDelay+"ms");
-  oled.println(String("Success:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
-  oled.println(String("Incoming:")+incomingCount);
+  oled.println(String("Potentiometer(1): ")+rawPot1Value);
+  oled.println(String("Potentiometer(2): ")+rawPot2Value);
   oled.display();
+}
+
+
+
+void DisplayMode4() 
+{
+  static bool bindingSet = false;
+  if (!ptrPot1 || ptrPot1 != &timeDelay) {
+    bindingSet = false;
+  }
+  if (outgoingData.RightJoystick.z)
+  {
+    bindingSet = !bindingSet;
+    ptrPot1 = bindingSet ? &timeDelay : NULL;
+  }
+
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.setTextColor(WHITE, BLACK);
+  if (bindingSet) {
+    oled.setTextColor(BLACK, WHITE);
+  }
+  oled.println(String("Display rate:")+1000.0f/(float)timeDelay+"Hz");
+  oled.setTextColor(WHITE, BLACK);
+
+  oled.display();
+}
+
+static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3, DisplayMode4};
+static int modeIndex = 0;
+
+void OnClickButton1() 
+{
+  --modeIndex;
+  clamp(modeIndex, 0, 3);
+  ptrMode = modes[modeIndex];
+  Serial.println("Button Pressed");
+}
+
+void OnClickButton2() 
+{
+  ++modeIndex;
+  clamp(modeIndex, 0, 3);
+  ptrMode = modes[modeIndex];
+  Serial.println("Button 2 Pressed");
 }
 
 void setup() 
 {
   // put your setup code here, to run once:
   Serial.begin(BAUD_RATE);
-  
+ 
+  // ============ OLED DISPLAY SETUP ===========
+
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   oled.display();//displays initial adafruit image
   oled.clearDisplay();//clears initial adafruit image
@@ -155,6 +226,14 @@ void setup()
   delay(100);
   oled.clearDisplay();
 
+  ptrMode = &DisplayMode1;
+
+  // ============ INPUT SETUP ===========
+
+  //ptrPot1 = &sendDelay;
+  leftJoystick.Start();
+  rightJoystick.Start();
+
   // INPUT_PULLUP button MUST be connected to GND
   // INPUT_PULLDOWN button MUST be connected to VCC
   pinMode(BUTTON_A, INPUT_PULLUP);
@@ -162,50 +241,56 @@ void setup()
   pinMode(BUTTON_C, INPUT_PULLUP);
   pinMode(BUTTON_1, INPUT_PULLDOWN);
   pinMode(BUTTON_2, INPUT_PULLDOWN);
-  
-  leftJoystick.Start();
-  rightJoystick.Start();
-  ptrMode = &DisplayMode1;
+  // RISING & FALLING are reversed if INPUT_PULLDOWN
+  attachInterrupt(BUTTON_1, OnClickButton1, FALLING);
+  attachInterrupt(BUTTON_2, OnClickButton2, FALLING);
 
+  // ============ WIRELESS COMMUNICATION SETUP ===========
   SetupESPNOW();
 
   oled.display();
-  delay(100);
  }
 
+bool paused = false;
 
 void loop() 
 {
+  if (paused) {
+    Serial.println("Paused...");
+    return;
+  }
+
   static unsigned long lastTimeStamp = millis();
-  static int modeIndex = 0;
-  static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3};
+  static unsigned long lastTimePacketSent = millis();
 
-  if (digitalRead(BUTTON_1) == 1) modeIndex--;//ptrMode = &DisplayMode1;
-  if (digitalRead(BUTTON_2) == 1) modeIndex++; //ptrMode = &DisplayMode2;
-  constrain(modeIndex, 0, 2);
-  ptrMode = modes[modeIndex];
+  rawPot1Value = analogRead(POTENTIOMETER_1);
+  rawPot2Value = analogRead(POTENTIOMETER_2);
+  if (ptrPot1) {
+    *ptrPot1 = map(rawPot1Value, 0, ADC_RESOLUTION, 1000, 0); //sendDelay = map(rawPotentiometer, 0, ADC_RESOLUTION, 1000, 0);
+  }
 
-  rawPotentiometer = analogRead(POTENTIOMETER_1);
-  sendDelay = map(rawPotentiometer, 0, ADC_RESOLUTION, 1000, 0);
-  rawPotentiometer2 = analogRead(POTENTIOMETER_2);
-  
   // Update values
   outgoingData.ID = (outgoingData.ID + 1) > sizeof(outgoingData.ID) ? 0 : outgoingData.ID + 1;
-  outgoingData.Potentiometer = rawPotentiometer2;
+  outgoingData.Potentiometer = rawPot2Value;
   outgoingData.LeftJoystick = leftJoystick.Read(100);//.Normalize();
   outgoingData.RightJoystick = rightJoystick.Read(100);//.Normalize();
   
   //time += millis();
-  if (millis() - lastTimeStamp > sendDelay)
+  if (millis() - lastTimePacketSent > sendDelay)
   {
-    lastTimeStamp = millis();
+    lastTimePacketSent = millis();
     // Send data
     esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
     outgoingCount++;
   }
 
-  if (ptrMode) {
-    (*ptrMode)();
+  if (millis() - lastTimeStamp > timeDelay)
+  {
+    lastTimeStamp = millis();
+    
+    if (ptrMode) {
+      (*ptrMode)();
+    }
   }
 
   //Wait 2 milliseconds for analog-to-digital converted to settle after last reading 
