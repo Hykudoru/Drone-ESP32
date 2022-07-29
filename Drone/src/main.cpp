@@ -93,7 +93,7 @@ void OnDataReceived(const uint8_t *mac, const uint8_t *data, int length)
   memcpy(&incomingData, data, sizeof(incomingData));
   ptrInput = &incomingData;
 
-  Serial.println("------INCOMING------");
+  //Serial.println("------INCOMING------");
  }
 
 void OnDataSent(const uint8_t *mac, esp_now_send_status_t status)
@@ -113,6 +113,7 @@ void SetupESPNOW()
   if (esp_now_init() != ESP_OK)
   {
     Serial.println("ESP_NOW failed to init");
+    delay(1000);
     return;
   }
   esp_now_register_recv_cb(OnDataReceived);
@@ -124,6 +125,7 @@ void SetupESPNOW()
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
     Serial.println("ESP_NOW failed to add peer");
+    delay(1000);
     return;
   }
 }
@@ -134,7 +136,7 @@ void mode_1() {
   oled.setCursor(0, 0);
   oled.println("Mode 1");
 
-  duelPrint(drone.GetAcceleration(), "Acceleration (m/s^2)");
+  // duelPrint(drone.GetAcceleration(), "Acceleration (m/s^2)");
   duelPrint(drone.GetAngularVelocity(), "Gyro (rad/s)");
           
   oled.display();
@@ -164,11 +166,24 @@ void DebugMode()
   Serial.println(String("Attempts:")+outgoingCount);
   Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
   Serial.println(String("Received:")+incomingCount);
+
+  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+
+  Serial.println("-----------");
+  Serial.println(String("Motor 1: ")+drone.m1Speed);
+  Serial.println(String("Motor 2: ")+drone.m2Speed);
+  Serial.println(String("Motor 3: ")+drone.m3Speed);
+  Serial.println(String("Motor 4: ")+drone.m4Speed);
+  Serial.println("-----------");
+
+  duelPrint(drone.GetVelocity(), "Velocity:");
+  duelPrint(drone.GetPosition(), "Position:");
+  duelPrint(drone.GetRotation(), "Rotation:");
 }
 
 void Input()
 {
-
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
   if (digitalRead(BUTTON_C) == 0) ptrMode = &DebugMode;
@@ -217,16 +232,18 @@ void Input()
         --drone.m4Speed;
       }
       
-      
     }
-    //delay(10);
+
+    //------Paused--------
+    if (ch == 'p') 
+    {
+      Serial.println("Paused... Press 'p' to resume.");
+      while (Serial.read() != 'p') 
+      {
+
+      }
+    }
   }
-    Serial.println("-----------");
-    Serial.println(String("Motor 1: ")+drone.m1Speed);
-    Serial.println(String("Motor 2: ")+drone.m2Speed);
-    Serial.println(String("Motor 3: ")+drone.m3Speed);
-    Serial.println(String("Motor 4: ")+drone.m4Speed);
-    Serial.println("-----------");
 }
 
 bool DEBUGGING = true;
@@ -264,16 +281,17 @@ void setup()
   }
 
   SetupESPNOW();
-  
+
   // WAITING COMMAND/INPUT: LED BLINKS slowly.
    // Note: Must place drone on flat surface before calibrating.
-  while((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false)
+  while(((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false) 
+  || Serial.read() == 'p')
   {
     Serial.println("Press & hold down both joysticks to begin calibrating drone.");
     digitalWrite(LED_1, HIGH);
-    delay(200);
+    delay(500);
     digitalWrite(LED_1, LOW);
-    delay(200);
+    delay(500);
   }
 
   // CALIBRATING: LED ON. 
@@ -292,7 +310,6 @@ void setup()
     }
   }
 
-  delay(500);
   oled.clearDisplay();
 }
 
@@ -317,14 +334,11 @@ void loop()
     timeSinceLastIncoming = 0;
   }
   
-  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
-  
   drone.Update(*ptrInput);//drone.Update(input);
  
  static unsigned long timer = 0;
  timer += deltaTimeMillis;
- if (timer >= 500UL)
+ if (timer >= 50UL)
  {
    timer = 0;
     if (ptrMode) {

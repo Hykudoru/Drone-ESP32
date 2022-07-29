@@ -15,21 +15,22 @@ sensors_event_t a, g, temp;
 // Adafruit_DCMotor *m3 = motorShield.getMotor(3);
 // Adafruit_DCMotor *m4 = motorShield.getMotor(4);
 
-// Vector3 Drone::GetPosition() 
-// {
-//     return position;
-// }
 
-// Vector3 Drone::GetRotation() 
-// {
-//     return rotation;
-// }
 Drone::Drone(/* args */)
 {
-  acceleration = Vector3<float>();
+  position = Vector3<float>();
+  rotation = Vector3<float>();
+  velocity = Vector3<float>();
   angularVelocity = Vector3<float>();
+
+  prevPosition = Vector3<float>();
+  prevRotation = Vector3<float>();
+  prevVelocity = Vector3<float>();
+  prevAngularVelocity = Vector3<float>();
+
   accelZeroOffset = Vector3<float>();
   gyroZeroOffset = Vector3<float>();
+
   motorShield = Adafruit_MotorShield();
   m1 = motorShield.getMotor(1);
   m2 = motorShield.getMotor(2);
@@ -41,16 +42,6 @@ Drone::Drone(/* args */)
 Drone::~Drone()
 {
     Serial.println("~Drone()");
-}
-
-Vector3<float> Drone::GetAcceleration()
-{
-  return acceleration;
-}
-
-Vector3<float> Drone::GetAngularVelocity()
-{
-  return angularVelocity;
 }
 
 void Drone::calibrate() 
@@ -70,7 +61,7 @@ void Drone::calibrate()
       accelSamples += a.acceleration.v;
       gyroSamples += g.gyro.v;
     }
-    delay(2);
+    delay(4);// 250Hz sample rate. 1000ms/250 = 4ms
   }
 
   // Vector average calculated from sampled vector sum
@@ -98,13 +89,14 @@ void Drone::Init()
   }
   else {
     Serial.println("MPU detected!");
-    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setAccelerometerRange(MPU6050_RANGE_16_G);// Sensitivity Scale Factor: raw 2,048 = 1g = (2^15)/16
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);// Sensitivity Scale Factor: raw ~65.5 = 1 deg/s = (2^15)/500
     //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     mpu.getAccelerometerSensor()->printSensorDetails();
     mpu.getGyroSensor()->printSensorDetails();
 
     delay(1000);
+
     calibrate();  
   }
 
@@ -113,15 +105,63 @@ void Drone::Init()
   delay(1000);
 }
 
+// const int MAX_SIZE_MPU_BUFFER = 10;
+// std::vector<> mpuBuffer;//heap
+
 void Drone::Update(JoystickControllerData input) 
 {
-  if (mpu.getEvent(&a, &g, &temp)) {
-    acceleration = Vector3<float>(a.acceleration.v) - accelZeroOffset;
-    angularVelocity = Vector3<float>(g.gyro.v) - gyroZeroOffset;
-    /*...
-    */
-  }
+  static unsigned long delayRead = 4;// 1/250
+  static unsigned long lastStartTime = millis();
+  static unsigned long mpuLastTimeSampled = millis();
 
+  if (millis() - lastStartTime >= delayRead) {
+    lastStartTime = millis();
+
+    if (mpu.getEvent(&a, &g, &temp)) 
+    {
+      // Time difference between now and last sample
+      float mpuDeltaTime = ((float)(millis() - mpuLastTimeSampled))/1000.0;
+      mpuLastTimeSampled = millis();
+        
+        // --------------Gyro/Angular------------------
+        Vector3<float> gyroAngularVel = Vector3<float>(g.gyro.v) - gyroZeroOffset;// rad/s
+        Vector3<float> deltaRot = gyroAngularVel * mpuDeltaTime; // rad
+        
+        prevAngularVelocity = angularVelocity;        
+        angularVelocity = gyroAngularVel;
+        //angularVelocity.t = millis();
+
+        prevRotation = rotation;
+        rotation += deltaRot;
+        //rotation.t = millis();
+
+        // --------------Accelerometer/Linear------------------
+      // (s/t)*t = s
+      //    v*t = d
+      // velocity += (Vector3<float>(a.acceleration.v) - accelZeroOffset); // m/s/s
+
+
+        // --------------Buffer Storage------------------
+        // if (mpuBuffer.size() >= MAX_SIZE_MPU_BUFFER) {
+        //   mpuBuffer.clear();
+        // }
+        // mpuBuffer.push_back();
+        
+        
+        Serial.println("------------------");
+        Serial.println(String("SampleRateDivisor: ")+mpu.getSampleRateDivisor());
+        Serial.println(String("CycleRate: ")+mpu.getCycleRate());
+        Serial.println(String("Heading: ")+g.gyro.heading);
+        Serial.println(String("Roll: ")+g.gyro.roll);
+        Serial.println(String("Pitch: ")+g.gyro.pitch);
+        Serial.println("deltaTime"); Serial.print(mpuDeltaTime, 4);
+        duelPrint(gyroAngularVel, "gyroAngularVel ");
+        duelPrint(deltaRot, "deltaRot ");
+        duelPrint(rotation, "rotation ");
+        Serial.println("------------------");
+    }
+
+  }
   //clamp range
   clamp(m1Speed, motorMinSpeed, motorMaxSpeed);
   clamp(m2Speed, motorMinSpeed, motorMaxSpeed);

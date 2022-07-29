@@ -19,3 +19,4 @@ float clamp(float &val, float min, float max);
 void print(Vector3<float> vec, char header[]);
 void duelPrint(Vector3<int> vec, String header = "");
 void duelPrint(Vector3<float> vec, String header = "");
+float RadToDeg(float radians);

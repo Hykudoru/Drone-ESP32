@@ -14,6 +14,8 @@
 
 extern Adafruit_SSD1306 oled;
 
+
+
 byte clamp(byte &val, byte min, byte max) {
   if (val > max) 
   {
@@ -92,4 +94,10 @@ void duelPrint(Vector3<float> vec, String header)
     oled.println(vec.z); 
 
     oled.display();
+}
+
+float RadToDeg(float radians)
+{
+  float degrees = radians * 180.0 / PI;
+  return degrees;
 }

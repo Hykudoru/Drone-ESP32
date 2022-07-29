@@ -11,11 +11,13 @@ class Drone
         Vector3<float> position;
         Vector3<float> rotation;
         Vector3<float> velocity;
-
-        Vector3<float> acceleration;
         Vector3<float> angularVelocity;
-        Vector3<float> prevAcceleration;
+
+        Vector3<float> prevPosition;
+        Vector3<float> prevRotation;
+        Vector3<float> prevVelocity;
         Vector3<float> prevAngularVelocity;
+
         Vector3<float> accelZeroOffset;
         Vector3<float> gyroZeroOffset;
 
@@ -41,9 +43,10 @@ class Drone
         ~Drone();
         void Init();
         void Update(JoystickControllerData input);
-        Vector3<float> GetAcceleration();
-        Vector3<float> GetAngularVelocity();
-        // Vector3 GetPosition();
-        // Vector3 GetRotation();
+        // Vector3<float> GetAcceleration();
+        Vector3<float> GetAngularVelocity() {return angularVelocity;}
+        Vector3<float> GetVelocity() {return velocity;}
+        Vector3<float> GetPosition() {return position;}
+        Vector3<float> GetRotation() {return rotation;}
 };
 #endif
