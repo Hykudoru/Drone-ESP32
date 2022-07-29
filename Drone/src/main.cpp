@@ -113,7 +113,6 @@ void SetupESPNOW()
   if (esp_now_init() != ESP_OK)
   {
     Serial.println("ESP_NOW failed to init");
-    delay(1000);
     return;
   }
   esp_now_register_recv_cb(OnDataReceived);
@@ -125,7 +124,6 @@ void SetupESPNOW()
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
     Serial.println("ESP_NOW failed to add peer");
-    delay(1000);
     return;
   }
 }
@@ -284,8 +282,8 @@ void setup()
 
   // WAITING COMMAND/INPUT: LED BLINKS slowly.
    // Note: Must place drone on flat surface before calibrating.
-  while(((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false) 
-  || Serial.read() == 'p')
+  while(((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false))
+  //|| Serial.read() == 'p')
   {
     Serial.println("Press & hold down both joysticks to begin calibrating drone.");
     digitalWrite(LED_1, HIGH);
