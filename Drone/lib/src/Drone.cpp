@@ -50,7 +50,7 @@ void Drone::calibrate()
   Vector3<float> gyroSamples = Vector3<float>(0.0, 0.0, 0.0);
   Vector3<float> accelError;
   Vector3<float> gyroError;
-  int nSamples = 1000;
+  int nSamples = 2000;
   
   Serial.println("Calibrating...");
   mpu.getEvent(&a, &g, &temp);
@@ -65,13 +65,13 @@ void Drone::calibrate()
   }
 
   // Vector average calculated from sampled vector sum
-  accelZeroOffset.x = accelSamples.x / nSamples;
-  accelZeroOffset.y = accelSamples.y / nSamples;
-  accelZeroOffset.z = accelSamples.z / nSamples;
+  accelZeroOffset.x = accelSamples.x / (float) nSamples;
+  accelZeroOffset.y = accelSamples.y / (float) nSamples;
+  accelZeroOffset.z = accelSamples.z / (float) nSamples;
 
-  gyroZeroOffset.x = gyroSamples.x / nSamples;
-  gyroZeroOffset.y = gyroSamples.y / nSamples;
-  gyroZeroOffset.z = gyroSamples.z / nSamples;
+  gyroZeroOffset.x = gyroSamples.x / (float) nSamples;
+  gyroZeroOffset.y = gyroSamples.y / (float) nSamples;
+  gyroZeroOffset.z = gyroSamples.z / (float) nSamples;
   //error = Vector3<float>(abs(avg.x), abs(avg.y), abs(avg.z-9.81));
   // accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
   // gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
@@ -91,11 +91,9 @@ void Drone::Init()
     Serial.println("MPU detected!");
     mpu.setAccelerometerRange(MPU6050_RANGE_16_G);// Sensitivity Scale Factor: raw 2,048 = 1g = (2^15)/16
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);// Sensitivity Scale Factor: raw ~65.5 = 1 deg/s = (2^15)/500
-    //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     mpu.getAccelerometerSensor()->printSensorDetails();
     mpu.getGyroSensor()->printSensorDetails();
-
-    delay(1000);
 
     calibrate();  
   }
@@ -123,23 +121,25 @@ void Drone::Update(JoystickControllerData input)
       float mpuDeltaTime = ((float)(millis() - mpuLastTimeSampled))/1000.0;
       mpuLastTimeSampled = millis();
         
-        // --------------Gyro/Angular------------------
-        Vector3<float> gyroAngularVel = Vector3<float>(g.gyro.v) - gyroZeroOffset;// rad/s
-        Vector3<float> deltaRot = gyroAngularVel * mpuDeltaTime; // rad
+      // --------------Gyro/Angular------------------
+      Vector3<float> gyroAngularVel = Vector3<float>(g.gyro.v) - gyroZeroOffset;// rad/s
+
+      prevAngularVelocity = angularVelocity;   
+      angularVelocity.x = RadToDeg(gyroAngularVel.x);
+      angularVelocity.y = RadToDeg(gyroAngularVel.y);
+      angularVelocity.z = RadToDeg(gyroAngularVel.z);
+
+      prevRotation = rotation;
+      rotation += angularVelocity * mpuDeltaTime; // delta rotate n degrees
         
-        prevAngularVelocity = angularVelocity;        
-        angularVelocity = gyroAngularVel;
-        //angularVelocity.t = millis();
-
-        prevRotation = rotation;
-        rotation += deltaRot;
-        //rotation.t = millis();
-
         // --------------Accelerometer/Linear------------------
-      // (s/t)*t = s
-      //    v*t = d
-      // velocity += (Vector3<float>(a.acceleration.v) - accelZeroOffset); // m/s/s
+      Vector3<float> gyroAccel = (Vector3<float>(a.acceleration.v) - accelZeroOffset); // m/s/s
+      
+      prevVelocity = velocity;
+      velocity += gyroAccel * mpuDeltaTime;
 
+      prevPosition = position;
+      position += velocity * mpuDeltaTime;
 
         // --------------Buffer Storage------------------
         // if (mpuBuffer.size() >= MAX_SIZE_MPU_BUFFER) {
@@ -155,9 +155,6 @@ void Drone::Update(JoystickControllerData input)
         Serial.println(String("Roll: ")+g.gyro.roll);
         Serial.println(String("Pitch: ")+g.gyro.pitch);
         Serial.println("deltaTime"); Serial.print(mpuDeltaTime, 4);
-        duelPrint(gyroAngularVel, "gyroAngularVel ");
-        duelPrint(deltaRot, "deltaRot ");
-        duelPrint(rotation, "rotation ");
         Serial.println("------------------");
     }
 

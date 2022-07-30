@@ -244,17 +244,18 @@ void Input()
   }
 }
 
-bool DEBUGGING = true;
+ #define DEBUGGING
+
 void setup() 
 {
   Serial.begin(BAUD_RATE);
-  if (DEBUGGING) {
+  #if defined(DEBUGGING)
     while (!Serial)
     {
       delay(100);
     }
-  }
-  
+  #endif
+
   Serial.println("Setup...");
 
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -274,15 +275,16 @@ void setup()
   pinMode(LED_1, OUTPUT);
 
   ptrMode = &mode_1;  
-   if (DEBUGGING) {
+  #if defined(DEBUGGING)
     ptrMode = &DebugMode;
-  }
-
+  #endif
+    
   SetupESPNOW();
 
+  #ifndef DEBUGGING
   // WAITING COMMAND/INPUT: LED BLINKS slowly.
    // Note: Must place drone on flat surface before calibrating.
-  while(((ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false))
+  while( (ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false )
   //|| Serial.read() == 'p')
   {
     Serial.println("Press & hold down both joysticks to begin calibrating drone.");
@@ -291,7 +293,7 @@ void setup()
     digitalWrite(LED_1, LOW);
     delay(500);
   }
-
+  #endif
   // CALIBRATING: LED ON. 
   // Note: Do not touch drone while calibrating.
   digitalWrite(LED_1, HIGH);
@@ -336,7 +338,7 @@ void loop()
  
  static unsigned long timer = 0;
  timer += deltaTimeMillis;
- if (timer >= 50UL)
+ if (timer >= 500UL)
  {
    timer = 0;
     if (ptrMode) {
