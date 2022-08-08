@@ -50,7 +50,7 @@ void Drone::calibrate()
   Vector3<float> gyroSamples = Vector3<float>(0.0, 0.0, 0.0);
   Vector3<float> accelError;
   Vector3<float> gyroError;
-  int nSamples = 2000;
+  int nSamples = 1000;
   
   Serial.println("Calibrating...");
   mpu.getEvent(&a, &g, &temp);
@@ -91,7 +91,7 @@ void Drone::Init()
     Serial.println("MPU detected!");
     mpu.setAccelerometerRange(MPU6050_RANGE_16_G);// Sensitivity Scale Factor: raw 2,048 = 1g = (2^15)/16
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);// Sensitivity Scale Factor: raw ~65.5 = 1 deg/s = (2^15)/500
-    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    //mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     mpu.getAccelerometerSensor()->printSensorDetails();
     mpu.getGyroSensor()->printSensorDetails();
 
@@ -105,15 +105,15 @@ void Drone::Init()
 
 // const int MAX_SIZE_MPU_BUFFER = 10;
 // std::vector<> mpuBuffer;//heap
-
-void Drone::Update(JoystickControllerData input) 
+unsigned long delayRead = 10000;// 1/250 Microseconds
+unsigned long lastStartTime = 0;
+unsigned long mpuLastTimeSampled = 0;
+void Drone::Update(JoystickControllerData* input) 
 {
-  static unsigned long delayRead = 4;// 1/250
-  static unsigned long lastStartTime = millis();
-  static unsigned long mpuLastTimeSampled = millis();
+  
 
-  if (millis() - lastStartTime >= delayRead) {
-    lastStartTime = millis();
+  if (micros() - lastStartTime > delayRead) {
+    lastStartTime = micros();
 
     if (mpu.getEvent(&a, &g, &temp)) 
     {
@@ -139,7 +139,7 @@ void Drone::Update(JoystickControllerData input)
       velocity += gyroAccel * mpuDeltaTime;
 
       prevPosition = position;
-      position += velocity * mpuDeltaTime;
+      position += gyroAccel * (mpuDeltaTime * mpuDeltaTime);
 
         // --------------Buffer Storage------------------
         // if (mpuBuffer.size() >= MAX_SIZE_MPU_BUFFER) {
@@ -147,14 +147,12 @@ void Drone::Update(JoystickControllerData input)
         // }
         // mpuBuffer.push_back();
         
-        
         Serial.println("------------------");
-        Serial.println(String("SampleRateDivisor: ")+mpu.getSampleRateDivisor());
-        Serial.println(String("CycleRate: ")+mpu.getCycleRate());
+
         Serial.println(String("Heading: ")+g.gyro.heading);
         Serial.println(String("Roll: ")+g.gyro.roll);
         Serial.println(String("Pitch: ")+g.gyro.pitch);
-        Serial.println("deltaTime"); Serial.print(mpuDeltaTime, 4);
+        Serial.println(mpuDeltaTime, 4);
         Serial.println("------------------");
     }
 

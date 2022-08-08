@@ -15,8 +15,9 @@
 #include "../lib/src/Drone.h"//#include <Drone.h>
 
 
-unsigned long deltaTimeMillis = 0.0;//time difference (in milliseconds) between each loop;
-unsigned long deltaTimeMicros = 0.0;//time difference (in microseconds) between each loop
+float deltaTimeSeconds = 0.0;//time difference (in seconds) between each loop;
+unsigned long deltaTimeMillis = 0U;//time difference (in milliseconds) between each loop;
+unsigned long deltaTimeMicros = 0U;//time difference (in microseconds) between each loop
 
 void Time() {
   
@@ -28,6 +29,8 @@ void Time() {
 
   deltaTimeMicros = (micros() - prevMicrosTime);
   prevMicrosTime = micros();
+
+  deltaTimeSeconds = deltaTimeMillis/1000.0;
 }
 
 void delay(unsigned long milliSec, void(*callback)(void))
@@ -72,8 +75,8 @@ const unsigned long INCOMING_DATA_LIFETIME = 50UL;
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
 uint8_t broadcastMACAddress[] {0x0C, 0xDC, 0x7E, 0xCA, 0xD2, 0x34}; // controller MAC address
 esp_now_peer_info_t peerInfo;
-DroneData outgoingData;
-JoystickControllerData incomingData;
+DroneData outgoingData = DroneData();
+JoystickControllerData incomingData = JoystickControllerData();
 JoystickControllerData* ptrInput = NULL;
 WirelessData incomingDataBuffer[MAX_DATA_BUFFER_SIZE];
 unsigned int outgoingSuccessCount = 0;
@@ -121,11 +124,25 @@ void SetupESPNOW()
   memcpy(peerInfo.peer_addr, broadcastMACAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
-  if (esp_now_add_peer(&peerInfo) != ESP_OK)
+
+  switch (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
-    Serial.println("ESP_NOW failed to add peer");
-    return;
+  case ESP_ERR_ESPNOW_EXIST:
+    Serial.println("ESP_NOW Error: Peer already existed!");
+    delay(2000);
+  break;
+  case ESP_OK:
+    Serial.println("ESP_NOW: Peer added!");
+    delay(2000);
+    break;
+  default:
+    break;
   }
+  // if (esp_now_add_peer(&peerInfo) != ESP_OK)
+  // {
+  //   Serial.println("ESP_NOW failed to add peer");
+  //   return;
+  // }
 }
 
 //--------------MODES-------------
@@ -160,24 +177,37 @@ void DebugMode()
   drone.m4Speed = value;
 
   Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
-  Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
+  Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeSeconds+" seconds \t"+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
   Serial.println(String("Attempts:")+outgoingCount);
   Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
   Serial.println(String("Received:")+incomingCount);
 
-  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
-
-  Serial.println("-----------");
-  Serial.println(String("Motor 1: ")+drone.m1Speed);
-  Serial.println(String("Motor 2: ")+drone.m2Speed);
-  Serial.println(String("Motor 3: ")+drone.m3Speed);
-  Serial.println(String("Motor 4: ")+drone.m4Speed);
-  Serial.println("-----------");
+  // Serial.println("-----------");
+  // Serial.println(String("Motor 1: ")+drone.m1Speed);
+  // Serial.println(String("Motor 2: ")+drone.m2Speed);
+  // Serial.println(String("Motor 3: ")+drone.m3Speed);
+  // Serial.println(String("Motor 4: ")+drone.m4Speed);
+  // Serial.println("-----------");
 
   duelPrint(drone.GetVelocity(), "Velocity:");
   duelPrint(drone.GetPosition(), "Position:");
-  duelPrint(drone.GetRotation(), "Rotation:");
+  duelPrint(drone.GetRotation(), "Rotation:");  
+  
+  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+}
+
+void Pause() 
+{
+  Serial.println("Paused... Press 'p' to resume.");
+  while (Serial.read() != 'p') 
+  {
+    while (Serial.read() == 'd') 
+    {
+      Serial.println("Holding 'd'.");
+      esp_now_send(broadcastMACAddress, (uint8_t *) &outgoingData, sizeof(outgoingData));
+    }
+  }
 }
 
 void Input()
@@ -235,11 +265,7 @@ void Input()
     //------Paused--------
     if (ch == 'p') 
     {
-      Serial.println("Paused... Press 'p' to resume.");
-      while (Serial.read() != 'p') 
-      {
-
-      }
+      Pause();
     }
   }
 }
@@ -280,20 +306,19 @@ void setup()
   #endif
     
   SetupESPNOW();
-
-  #ifndef DEBUGGING
+  ptrInput = &incomingData;
+  
   // WAITING COMMAND/INPUT: LED BLINKS slowly.
    // Note: Must place drone on flat surface before calibrating.
-  while( (ptrInput->LeftJoystick.z && ptrInput->RightJoystick.z) == false )
-  //|| Serial.read() == 'p')
+  Serial.println("Press & hold down both joysticks to begin calibrating drone.");
+  while((Serial.read() != 'p') && (incomingData.LeftJoystick.z && incomingData.RightJoystick.z) == false )
   {
-    Serial.println("Press & hold down both joysticks to begin calibrating drone.");
     digitalWrite(LED_1, HIGH);
     delay(500);
     digitalWrite(LED_1, LOW);
     delay(500);
   }
-  #endif
+
   // CALIBRATING: LED ON. 
   // Note: Do not touch drone while calibrating.
   digitalWrite(LED_1, HIGH);
@@ -334,7 +359,7 @@ void loop()
     timeSinceLastIncoming = 0;
   }
   
-  drone.Update(*ptrInput);//drone.Update(input);
+  drone.Update(&incomingData);//drone.Update(input);
  
  static unsigned long timer = 0;
  timer += deltaTimeMillis;

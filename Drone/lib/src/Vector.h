@@ -290,3 +290,21 @@ Vector3<T>::Vector3(T xyz[])
     z = xyz[2];
 }
 #endif
+
+/*
+using Vector3f = Vector3<float>;
+float vec3[];
+Vector3f m[3][3] = {
+    {Vector3f()},
+    {Vector3f()},
+    {Vector3f()}
+};
+float identity[3][3] = {
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, 0, 1},
+};
+ 
+space coordinates xyz
+body coordinates XYZ-++
+*/
