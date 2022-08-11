@@ -2,7 +2,12 @@
 #define VECTOR_H
 
 template <typename T>
-class Vector3;
+class Vector3;template <typename T>
+
+T DotProduct(Vector3<T> a, Vector3<T> b);
+
+template <typename T>
+Vector3<T> CrossProduct(Vector3<T> a, Vector3<T> b);
 
 //-------------------------------
 // --------- Vector2 ------------
@@ -290,3 +295,21 @@ Vector3<T>::Vector3(T xyz[])
     z = xyz[2];
 }
 #endif
+
+/*
+using Vector3f = Vector3<float>;
+float vec3[];
+Vector3f m[3][3] = {
+    {Vector3f()},
+    {Vector3f()},
+    {Vector3f()}
+};
+float identity[3][3] = {
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, 0, 1},
+};
+ 
+space coordinates xyz
+body coordinates XYZ-++
+*/

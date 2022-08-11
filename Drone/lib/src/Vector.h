@@ -2,7 +2,12 @@
 #define VECTOR_H
 
 template <typename T>
-class Vector3;
+class Vector3;template <typename T>
+
+T DotProduct(Vector3<T> a, Vector3<T> b);
+
+template <typename T>
+Vector3<T> CrossProduct(Vector3<T> a, Vector3<T> b);
 
 //-------------------------------
 // --------- Vector2 ------------
