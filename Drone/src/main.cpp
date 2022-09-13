@@ -45,6 +45,8 @@ void delay(unsigned long milliSec, void(*callback)(void))
   }
 }
 
+
+#define DEBUGGING
 #if defined(ESP32)
   const int BAUD_RATE = 115200;
   const uint16_t ADC_RESOLUTION = 4095; // 0 - 4095
@@ -57,19 +59,15 @@ const int BUTTON_B = 32;
 const int BUTTON_C = 14;
 const int LED_1 = LED_BUILTIN;
 int ACCEL_GYRO_ADDR = 0x68;
-
 //pfunc can be reasigned at runtime to change the desired procedure invoked inside the default loop function.
 typedef void (*pointerFunction)(void);
 pointerFunction ptrMode;
-
-// #if defined(oled)
-// #else
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128, 32, &Wire);
-// #endif
-
 Drone drone = Drone();
 
-//================ ESPNOW WIRELESS COMMUNICATION DATA VARS ================
+//==================================================================
+//                  ESPNOW WIRELESS COMMUNICATION  
+//==================================================================
 const int MAX_DATA_BUFFER_SIZE = 10;
 const unsigned long INCOMING_DATA_LIFETIME = 50UL;
 uint8_t selfMACAddress[] {0x94, 0xB9, 0x7E, 0x5F, 0x51, 0x40}; //Drone MAC address = 94:B9:7E:5F:51:40
@@ -145,7 +143,12 @@ void SetupESPNOW()
   // }
 }
 
-//--------------MODES-------------
+//==================================================================
+//                          DEBUGGING
+//==================================================================
+//==================================================================
+//                            MODES 
+//==================================================================
 void mode_1() {
   oled.clearDisplay();
   oled.setCursor(0, 0);
@@ -167,34 +170,36 @@ void mode_2() {
 
 void DebugMode() 
 {
-  unsigned long t = 0;
-  unsigned long serialUpdateDelay = 50;
+  // unsigned long t = 0;
+  // unsigned long serialUpdateDelay = 50;
 
-  byte value = (byte) map(ptrInput->Potentiometer, 0, ADC_RESOLUTION, 0, 255);
-  drone.m1Speed = value; 
-  drone.m2Speed = value;
-  drone.m3Speed = value;
-  drone.m4Speed = value;
+  // byte value = (byte) map(ptrInput->Potentiometer, 0, ADC_RESOLUTION, 0, 255);
+  // drone.m1Speed = value; 
+  // drone.m2Speed = value;
+  // drone.m3Speed = value;
+  // drone.m4Speed = value;
 
   Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
   Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeSeconds+" seconds \t"+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
-  Serial.println(String("Attempts:")+outgoingCount);
-  Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
-  Serial.println(String("Received:")+incomingCount);
+  // Serial.println(String("Attempts:")+outgoingCount);
+  // Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
+  // Serial.println(String("Received:")+incomingCount);
 
+  // duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
+  // duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+  
   // Serial.println("-----------");
   // Serial.println(String("Motor 1: ")+drone.m1Speed);
   // Serial.println(String("Motor 2: ")+drone.m2Speed);
   // Serial.println(String("Motor 3: ")+drone.m3Speed);
   // Serial.println(String("Motor 4: ")+drone.m4Speed);
-  // Serial.println("-----------");
+  // // Serial.println("-----------");
 
-  duelPrint(drone.GetVelocity(), "Velocity:");
-  duelPrint(drone.GetPosition(), "Position:");
-  duelPrint(drone.GetRotation(), "Rotation:");  
+  // duelPrint(drone.GetVelocity(), "Velocity:");
+  // duelPrint(drone.GetPosition(), "Position:");
+  // duelPrint(drone.GetRotation(), "Rotation:");  
   
-  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+  
 }
 
 void Pause() 
@@ -270,7 +275,9 @@ void Input()
   }
 }
 
- #define DEBUGGING
+//=======================================================================================================
+//                                            SETUP 
+//=======================================================================================================
 
 void setup() 
 {
@@ -308,8 +315,10 @@ void setup()
   SetupESPNOW();
   ptrInput = &incomingData;
   
-  // WAITING COMMAND/INPUT: LED BLINKS slowly.
-   // Note: Must place drone on flat surface before calibrating.
+  //===========================================================
+  // AWAITING COMMAND/INPUT: LED BLINKS slowly.
+  // Note: Must place drone on flat surface before calibrating.
+  //===========================================================
   Serial.println("Press & hold down both joysticks to begin calibrating drone.");
   while((Serial.read() != 'p') && (incomingData.LeftJoystick.z && incomingData.RightJoystick.z) == false )
   {
@@ -319,12 +328,16 @@ void setup()
     delay(500);
   }
 
-  // CALIBRATING: LED ON. 
+  //============================================
+  // BEGIN CALIBRATING: LED ON. 
   // Note: Do not touch drone while calibrating.
+  //============================================
   digitalWrite(LED_1, HIGH);
   drone.Init();
 
-  // AFTER/DONE CALIBRATING: LED BLINKS rapidly then OFF.
+  //=====================================================
+  // DONE CALIBRATING: LED BLINKS rapidly then OFF.
+  //=====================================================
   { 
     for (size_t i = 0; i < 4; i++)
     {
@@ -343,6 +356,9 @@ pointerFunction procedureQueue[] = {
   Input
 };
 
+//=======================================================================================================
+//                                            MAIN LOOP 
+//=======================================================================================================
 void loop() 
 {
   for (size_t i = 0; i < sizeof(procedureQueue)/sizeof(pointerFunction); i++)

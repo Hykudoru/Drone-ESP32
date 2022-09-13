@@ -5,6 +5,21 @@
 
 #ifndef DRONE_H
 #define DRONE_H
+
+
+class Rigidbody
+{
+    public:
+        Vector3<float> position;
+        Vector3<float> rotation;
+        Vector3<float> velocity;
+        Vector3<float> angularVelocity;
+        ulong timestamp;
+        Rigidbody(){};
+        ~Rigidbody(){};
+};
+
+
 class Drone
 {
     private:

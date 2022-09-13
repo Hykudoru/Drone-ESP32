@@ -6,6 +6,8 @@
 #include "Drone.h"
 #include <Functions.h>
 
+#include <vector>
+using namespace std;
 //Adafruit_MPU6050 mpu;
 sensors_event_t a, g, temp;
 
@@ -75,8 +77,6 @@ void Drone::calibrate()
   gyroZeroOffset.y = gyroSamples.y / (float) nSamples;
   gyroZeroOffset.z = gyroSamples.z / (float) nSamples;
   //error = Vector3<float>(abs(avg.x), abs(avg.y), abs(avg.z-9.81));
-  // accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
-  // gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
 
   print(accelZeroOffset, "Zero Offset Accel: ");
   print(gyroZeroOffset, "Zero Offset Gyro: ");
@@ -86,7 +86,7 @@ void Drone::Init()
 {
   if (!mpu.begin())
   {
-    Serial.println("MPU not detected!...");;
+    Serial.println("MPU not detected!...");
     delay(1000);
   }
   else {
@@ -123,9 +123,9 @@ void Drone::Init()
   delay(1000);
 }
 
-// const int MAX_SIZE_MPU_BUFFER = 10;
-// std::vector<> mpuBuffer;//heap
-unsigned long delayRead = 10000;// 1/250 Microseconds
+const int MAX_SIZE_MPU_BUFFER = 10;
+std::vector<Rigidbody> buffer;//heap
+unsigned long delayRead = 4000;// 1/250 = 0.004s
 unsigned long lastStartTime = 0;
 unsigned long mpuLastTimeSampled = 0;
 
@@ -136,43 +136,64 @@ void Drone::Update(JoystickControllerData* input)
 
     if (mpu.getEvent(&a, &g, &temp)) 
     {
+      //===================================================
+      //                    PHYSICS
+      //===================================================
       // Time difference between now and last sample
       float mpuDeltaTime = ((float)(millis() - mpuLastTimeSampled))/1000.0;
       mpuLastTimeSampled = millis();
-        
+
       prevPosition = position;
       prevVelocity = velocity;
       prevRotation = rotation;
       prevAngularVelocity = angularVelocity;   
 
-      // =============== ANGULAR / GYRO ================
+      // =============== GYRO RAD/S ================
       Vector3<float> gyroAngularVel = Vector3<float>(g.gyro.v) - gyroZeroOffset;// rad/s
 
       angularVelocity.x = RadToDeg(gyroAngularVel.x);
       angularVelocity.y = RadToDeg(gyroAngularVel.y);
       angularVelocity.z = RadToDeg(gyroAngularVel.z);
-
+      
       rotation += angularVelocity * mpuDeltaTime; // delta rotate n degrees
-        
-      // =============== LINEAR / ACCELEROMETER ================
+      // =============== ACCELEROMETER M/S^2 ================
       Vector3<float> gyroAccel = (Vector3<float>(a.acceleration.v) - accelZeroOffset); // m/s/s
       
       velocity += gyroAccel * mpuDeltaTime;
-
       position += gyroAccel * (mpuDeltaTime * mpuDeltaTime);
 
         // --------------Buffer Storage------------------
-        // if (mpuBuffer.size() >= MAX_SIZE_MPU_BUFFER) {
-        //   mpuBuffer.clear();
-        // }
-        // mpuBuffer.push_back();
-        
-        Serial.println("------------------");
-        Serial.println(String("Heading: ")+g.gyro.heading);
-        Serial.println(String("Roll: ")+g.gyro.roll);
-        Serial.println(String("Pitch: ")+g.gyro.pitch);
-        Serial.println(mpuDeltaTime, 4);
-        Serial.println("------------------");
+        if (buffer.size() < MAX_SIZE_MPU_BUFFER) 
+        {
+          Rigidbody rb = Rigidbody();
+          rb.position = position;
+          rb.rotation = rotation;
+          rb.velocity = velocity;
+          rb.angularVelocity = angularVelocity;
+          rb.timestamp = millis()/1000UL;
+          buffer.push_back(rb);
+        }
+        else {
+          Serial.println("===================================");
+          for (size_t i = 0; i < buffer.size(); i++)
+          {
+            //Serial.println(String("Timestamp: ") + buffer[i].timestamp);
+            //Serial.println("------------------------------------");
+            // duelPrint(buffer[i].position, "Position");
+            duelPrint(buffer[i].rotation, "Rotation");
+            // duelPrint(buffer[i].velocity, "Velocity");
+            // duelPrint(buffer[i].angularVelocity, "AngularVelocity");
+          } 
+          Serial.println("===================================");
+          buffer.clear();
+        }
+  
+        // Serial.println("------------------");
+        // Serial.println(String("Heading: ")+g.gyro.heading);
+        // Serial.println(String("Roll: ")+g.gyro.roll);
+        // Serial.println(String("Pitch: ")+g.gyro.pitch);
+        // Serial.println(mpuDeltaTime, 4);
+        // Serial.println("------------------");
     }
 
   }
