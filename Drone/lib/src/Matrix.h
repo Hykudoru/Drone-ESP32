@@ -1,19 +1,27 @@
 #ifndef MATRIX_H
 #define MATRIX_H
-#include <math.h>
 #include <Vector.h>
 
-float Identity[3][3] = {
+float Identity3x3[3][3] = {
     {1, 0, 0},
     {0, 1, 0},
     {0, 0, 1}
+};
+float Zero3x3[3][3] = {
+    {0, 0, 0},
+    {0, 0, 0},
+    {0, 0, 0}
 };
 
 class Matrix3x3 
 {
 public:
-    float matrix[3][3];
-    Matrix3x3();
+    float matrix[3][3] = {
+    {0, 0, 0},
+    {0, 0, 0},
+    {0, 0, 0}
+};
+    Matrix3x3() {}
     Matrix3x3(float matrix3x3[3][3])
     {
         for (size_t r = 0; r < 3; r++)
@@ -24,7 +32,6 @@ public:
             }
             
         }
-        
     }
 };
 
@@ -46,9 +53,10 @@ Matrix3x3 Multiply(float matrixA[3][3], float matrixB[3][3])
     return result;
 }
 
-//      | 1,   0,      0     |
-// Rx = | 0, Cos(T), -Sin(T) |
-//      | 0, Sin(T),  Cos(T) |
+// Rotation Matrix about the X axis
+// | 1,   0,      0     |
+// | 0, Cos(T), -Sin(T) |
+// | 0, Sin(T),  Cos(T) |
 Matrix3x3 RotX(float theta) 
 {
     float Cos = cos(theta);
@@ -64,10 +72,10 @@ Matrix3x3 RotX(float theta)
     Matrix3x3 matrix(standardRotX);
     return matrix;
 }
-
-//      | Cos(T),  0,   Sin(T)  |
-// Ry = |   0,     1,     0     |
-//      |-Sin(T),  0,   Cos(T)  |
+// Rotation Matrix about the Y axis
+// | Cos(T),  0,   Sin(T)  |
+// |   0,     1,     0     |
+// |-Sin(T),  0,   Cos(T)  |
 Matrix3x3 RotY(float theta) 
 {
     float Cos = cos(theta);
@@ -84,9 +92,10 @@ Matrix3x3 RotY(float theta)
     return matrix;
 }
 
-//      | Cos(T), -Sin(T), 0 |
-// Rz = | Sin(T),  Cos(T), 0 |
-//      |   0,      0,     1 |
+// Rotation Matrix about the Z axis
+// | Cos(T), -Sin(T), 0 |
+// | Sin(T),  Cos(T), 0 |
+// |   0,      0,     1 |
 Matrix3x3 RotZ(float theta) 
 {
     float Cos = cos(theta);
@@ -94,9 +103,9 @@ Matrix3x3 RotZ(float theta)
 
     float standardRotZ[3][3] = 
     {
-        {Cos, 0, Sin},     
-        {0,   1,  0 },  
-        {-Sin,0, Cos}
+        {Cos, -Sin,  0},     
+        {Sin,  Cos,  0},  
+        {0,     0,   1}
     };
 
     Matrix3x3 matrix(standardRotZ);

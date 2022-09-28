@@ -12,13 +12,27 @@
 //Alex Lib
 #include <Functions.h>
 #include <Matrix.h>
-#include <WirelessData.h>
-#include "../lib/src/Drone.h"//#include <Drone.h>
+const int BAUD_RATE = 115200;
+void setup()
+{
+  Serial.begin(BAUD_RATE);
+}
 
-
+Matrix3x3 rotation = Matrix3x3(Identity3x3);
 
 void loop() 
 {
-  Matrix3x3 rotMatrix;
-  rotMatrix = Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
+  Serial.println("--------------");
+  for (size_t i = 0; i < 3; i++)
+  {
+    
+      Vector3<float> row = rotation.matrix[i];
+      String pipe = String(" | ");
+      Serial.println(pipe+row.x+", "+row.y+", "+row.z+pipe);
+  }
+  
+  delay(1000);
+  
+  rotation = Multiply(rotation.matrix, RotZ(PI/2.0).matrix);// Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
+  // rotation = Multiply(rotation.matrix, rotationMatrix.matrix);
 }
