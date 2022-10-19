@@ -116,10 +116,21 @@ void SetupESPNOW()
     return;
   }
 }
+bool bindingSet = false;
 
 void DisplayMode1() 
 {
-  static bool bindingSet = false;
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println(String("Left Joystick (")+(bool)outgoingData.LeftJoystick.z+")");
+  oled.println(String("")+"X:"+outgoingData.LeftJoystick.x+" Y:"+outgoingData.LeftJoystick.y);
+  oled.println(String("Right Joystick (")+(bool)outgoingData.RightJoystick.z+")");
+  oled.println(String("")+"X:"+outgoingData.RightJoystick.x+" Y:"+outgoingData.RightJoystick.y);
+  oled.display();
+}
+
+void DisplayMode2() 
+{
   if (!ptrPot1 || ptrPot1 != &sendDelay) {
     bindingSet = false;
   }
@@ -128,7 +139,6 @@ void DisplayMode1()
     bindingSet = !bindingSet;
     ptrPot1 = bindingSet ? &sendDelay : NULL;
   }
-
   oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.setTextColor(WHITE, BLACK);
@@ -143,16 +153,7 @@ void DisplayMode1()
   oled.display();
 }
 
-void DisplayMode2() 
-{
-  oled.clearDisplay();
-  oled.setCursor(0, 0);
-  oled.println(String("Left Joystick (")+(bool)outgoingData.LeftJoystick.z+")");
-  oled.println(String("")+"X:"+outgoingData.LeftJoystick.x+" Y:"+outgoingData.LeftJoystick.y);
-  oled.println(String("Right Joystick (")+(bool)outgoingData.RightJoystick.z+")");
-  oled.println(String("")+"X:"+outgoingData.RightJoystick.x+" Y:"+outgoingData.RightJoystick.y);
-  oled.display();
-}
+
 
 void DisplayMode3() 
 {
@@ -163,11 +164,9 @@ void DisplayMode3()
   oled.display();
 }
 
-
-
 void DisplayMode4() 
 {
-  static bool bindingSet = false;
+  //static bool bindingSet = false;
   if (!ptrPot1 || ptrPot1 != &timeDelay) {
     bindingSet = false;
   }
@@ -191,19 +190,18 @@ void DisplayMode4()
 
 static pointerFunction modes[] = {DisplayMode1, DisplayMode2, DisplayMode3, DisplayMode4};
 static int modeIndex = 0;
+static int prevModeIndex = 0;
 
 void OnClickButton1() 
 {
-  --modeIndex;
-  clamp(modeIndex, 0, 3);
+  modeIndex = clamp(--modeIndex, 0, 3);
   ptrMode = modes[modeIndex];
   Serial.println("Button Pressed");
 }
 
 void OnClickButton2() 
 {
-  ++modeIndex;
-  clamp(modeIndex, 0, 3);
+  modeIndex = clamp(++modeIndex, 0, 3);
   ptrMode = modes[modeIndex];
   Serial.println("Button 2 Pressed");
 }
@@ -242,8 +240,8 @@ void setup()
   pinMode(BUTTON_1, INPUT_PULLDOWN);
   pinMode(BUTTON_2, INPUT_PULLDOWN);
   // RISING & FALLING are reversed if INPUT_PULLDOWN
-  attachInterrupt(BUTTON_1, OnClickButton1, FALLING);
-  attachInterrupt(BUTTON_2, OnClickButton2, FALLING);
+  attachInterrupt(BUTTON_1, OnClickButton1, RISING);
+  attachInterrupt(BUTTON_2, OnClickButton2, RISING);
 
   // ============ WIRELESS COMMUNICATION SETUP ===========
   SetupESPNOW();
@@ -258,6 +256,14 @@ void loop()
   if (paused) {
     Serial.println("Paused...");
     return;
+  }
+  
+  // check for mode changes
+  if (modeIndex != prevModeIndex)
+  {
+    prevModeIndex = modeIndex;
+    //bindingSet = false;
+    ptrPot1 = NULL;
   }
 
   static unsigned long lastTimeStamp = millis();
