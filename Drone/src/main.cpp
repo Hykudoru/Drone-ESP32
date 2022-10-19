@@ -146,13 +146,22 @@ void SetupESPNOW()
 }
 
 //--------------MODES-------------
+void mode_0()
+{
+
+}
+
 void mode_1() {
   oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.println("Mode 1");
 
-  // duelPrint(drone.GetAcceleration(), "Acceleration (m/s^2)");
-  duelPrint(drone.GetAngularVelocity(), "Gyro (rad/s)");
+  Serial.println("-----Keys [1,2,3,4,+,-]------");
+  Serial.println(String("Motor 1: ")+drone.m1Speed);
+  Serial.println(String("Motor 2: ")+drone.m2Speed);
+  Serial.println(String("Motor 3: ")+drone.m3Speed);
+  Serial.println(String("Motor 4: ")+drone.m4Speed);
+  Serial.println("-----------");
           
   oled.display();
 }
@@ -161,40 +170,38 @@ void mode_2() {
   oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.println("Mode 2");
-  /**/
-  oled.display();
-}
-
-void DebugMode() 
-{
-  unsigned long t = 0;
-  unsigned long serialUpdateDelay = 50;
-
+  
   byte value = (byte) map(ptrInput->Potentiometer, 0, ADC_RESOLUTION, 0, 255);
   drone.m1Speed = value; 
   drone.m2Speed = value;
   drone.m3Speed = value;
   drone.m4Speed = value;
 
+  Serial.println("-----Potentiometer------");
+  Serial.println(String("Motor 1: ")+drone.m1Speed);
+  Serial.println(String("Motor 2: ")+drone.m2Speed);
+  Serial.println(String("Motor 3: ")+drone.m3Speed);
+  Serial.println(String("Motor 4: ")+drone.m4Speed);
+  Serial.println("-----------");
+  
+  oled.display();
+}
+
+void mode_3() 
+{
   Serial.println(String("Total Time: ")+millis()/1000UL+"s \t"+millis()+" milliseconds \t"+micros()+" microseconds");
   Serial.println(String("Delta Time (since last frame): ")+"\t"+deltaTimeSeconds+" seconds \t"+"\t"+deltaTimeMillis+" milliseconds \t"+deltaTimeMicros+" microseconds");
   Serial.println(String("Attempts:")+outgoingCount);
   Serial.println(String("Sent:")+outgoingSuccessCount+", Failed:"+outgoingFailCount);
   Serial.println(String("Received:")+incomingCount);
+    Serial.println("----------Incoming Data---------");
+  duelPrint(incomingData.LeftJoystick, "Data Incoming: LEFT JOYSTICK ");
+  duelPrint(incomingData.RightJoystick, "Data Incoming: RIGHT JOYSTICK ");
+  Serial.println(String("Data Incoming: Potentiometer ")+incomingData.Potentiometer);
 
-  // Serial.println("-----------");
-  // Serial.println(String("Motor 1: ")+drone.m1Speed);
-  // Serial.println(String("Motor 2: ")+drone.m2Speed);
-  // Serial.println(String("Motor 3: ")+drone.m3Speed);
-  // Serial.println(String("Motor 4: ")+drone.m4Speed);
-  // Serial.println("-----------");
-
-  duelPrint(drone.GetVelocity(), "Velocity:");
-  duelPrint(drone.GetPosition(), "Position:");
-  duelPrint(drone.GetRotation(), "Rotation:");  
-  
-  duelPrint(incomingData.LeftJoystick, "LEFT JOYSTICK ");
-  duelPrint(incomingData.RightJoystick, "RIGHT JOYSTICK ");
+  // duelPrint(drone.GetVelocity(), "Velocity:");
+  // duelPrint(drone.GetPosition(), "Position:");
+  // duelPrint(drone.GetRotation(), "Rotation:");  
 }
 
 void Pause() 
@@ -214,7 +221,7 @@ void Input()
 {
   if (digitalRead(BUTTON_A) == 0) ptrMode = &mode_1;
   if (digitalRead(BUTTON_B) == 0) ptrMode = &mode_2;
-  if (digitalRead(BUTTON_C) == 0) ptrMode = &DebugMode;
+  if (digitalRead(BUTTON_C) == 0) ptrMode = &mode_3;
 
 //---------SERIAL INPUT-------------
   if(Serial.available())
@@ -224,7 +231,7 @@ void Input()
     
     if (ch == 'a') ptrMode = &mode_1;
     if (ch == 'b') ptrMode = &mode_2;
-    if (ch == 'c') ptrMode = &DebugMode;
+    if (ch == 'c') ptrMode = &mode_3;
 
     // Pressing 1, 2, 3, 4 toggles corresponding motor at full speed or 0
     switch (ch)
@@ -261,7 +268,7 @@ void Input()
       }
       
     }
-
+    
     //------Paused--------
     if (ch == 'p') 
     {
@@ -300,10 +307,10 @@ void setup()
   pinMode(BUTTON_C, INPUT_PULLUP);
   pinMode(LED_1, OUTPUT);
 
-  ptrMode = &mode_1;  
-  #if defined(DEBUGGING)
-    ptrMode = &DebugMode;
-  #endif
+  ptrMode = &mode_0;  
+  // #if defined(DEBUGGING)
+  //   ptrMode = &DebugMode;
+  // #endif
     
   SetupESPNOW();
   ptrInput = &incomingData;
@@ -345,6 +352,12 @@ pointerFunction procedureQueue[] = {
 
 void loop() 
 {
+  static bool init = false;
+  if (!init){
+    init = true;
+    Serial.println("Running...");
+  }
+
   for (size_t i = 0; i < sizeof(procedureQueue)/sizeof(pointerFunction); i++)
   {
     procedureQueue[i]();
@@ -363,7 +376,7 @@ void loop()
  
  static unsigned long timer = 0;
  timer += deltaTimeMillis;
- if (timer >= 500UL)
+ if (timer >= 100UL)
  {
    timer = 0;
     if (ptrMode) {

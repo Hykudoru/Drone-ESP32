@@ -167,12 +167,12 @@ void Drone::Update(JoystickControllerData* input)
         // }
         // mpuBuffer.push_back();
         
-        Serial.println("------------------");
-        Serial.println(String("Heading: ")+g.gyro.heading);
-        Serial.println(String("Roll: ")+g.gyro.roll);
-        Serial.println(String("Pitch: ")+g.gyro.pitch);
-        Serial.println(mpuDeltaTime, 4);
-        Serial.println("------------------");
+        // Serial.println("------------------");
+        // Serial.println(String("Heading: ")+g.gyro.heading);
+        // Serial.println(String("Roll: ")+g.gyro.roll);
+        // Serial.println(String("Pitch: ")+g.gyro.pitch);
+        // Serial.println(mpuDeltaTime, 4);
+        // Serial.println("------------------");
     }
 
   }
