@@ -75,8 +75,6 @@ void Drone::calibrate()
   gyroZeroOffset.y = gyroSamples.y / (float) nSamples;
   gyroZeroOffset.z = gyroSamples.z / (float) nSamples;
   //error = Vector3<float>(abs(avg.x), abs(avg.y), abs(avg.z-9.81));
-  // accelCal = Vector3<float>(a.acceleration.v) - zeroOffsetAccel;
-  // gyroCal = Vector3<float>(g.gyro.v) - zeroOffsetGyro;
 
   print(accelZeroOffset, "Zero Offset Accel: ");
   print(gyroZeroOffset, "Zero Offset Gyro: ");
@@ -86,7 +84,7 @@ void Drone::Init()
 {
   if (!mpu.begin())
   {
-    Serial.println("MPU not detected!...");;
+    Serial.println("MPU not detected!...");
     delay(1000);
   }
   else {
@@ -136,29 +134,30 @@ void Drone::Update(JoystickControllerData* input)
 
     if (mpu.getEvent(&a, &g, &temp)) 
     {
+      //===================================================
+      //                    PHYSICS
+      //===================================================
       // Time difference between now and last sample
       float mpuDeltaTime = ((float)(millis() - mpuLastTimeSampled))/1000.0;
       mpuLastTimeSampled = millis();
-        
+
       prevPosition = position;
       prevVelocity = velocity;
       prevRotation = rotation;
       prevAngularVelocity = angularVelocity;   
 
-      // =============== ANGULAR / GYRO ================
+      // =============== GYRO RAD/S ================
       Vector3<float> gyroAngularVel = Vector3<float>(g.gyro.v) - gyroZeroOffset;// rad/s
 
       angularVelocity.x = RadToDeg(gyroAngularVel.x);
       angularVelocity.y = RadToDeg(gyroAngularVel.y);
       angularVelocity.z = RadToDeg(gyroAngularVel.z);
-
       rotation += angularVelocity * mpuDeltaTime; // delta rotate n degrees
         
-      // =============== LINEAR / ACCELEROMETER ================
+      // =============== ACCELEROMETER M/S^2 ================
       Vector3<float> gyroAccel = (Vector3<float>(a.acceleration.v) - accelZeroOffset); // m/s/s
       
       velocity += gyroAccel * mpuDeltaTime;
-
       position += gyroAccel * (mpuDeltaTime * mpuDeltaTime);
 
         // --------------Buffer Storage------------------
