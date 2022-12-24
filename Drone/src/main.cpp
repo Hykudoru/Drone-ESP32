@@ -32,7 +32,6 @@ void loop()
   }
   
   delay(1000);
-  
-  rotation = Multiply(rotation.matrix, RotZ(PI/2.0).matrix);// Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
+  rotation = rotation * RotZ(PI/2.0);//rz;//rotation = Multiply(rotation.matrix, RotZ(PI/2.0).matrix);// Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
   // rotation = Multiply(rotation.matrix, rotationMatrix.matrix);
 }

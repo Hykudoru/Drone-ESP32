@@ -2,6 +2,30 @@
 #define MATRIX_H
 #include <Vector.h>
 
+/* 
+------Dynamic Allocate/Dealocate------
+float* dynArray = new float[rows];
+delete[] dynArray;
+dynArray = NULL;
+
+
+------Dynamic Allocate------
+float** table = new float*[rows];
+for (size_t i = 0; i < rows; i++) 
+{
+    table[i] = new float[cols];
+}
+
+-----Dynamic Dealocate (Notice that the process is actually reversed)-----
+for (size_t i = 0; i < rows; i++) 
+{
+    delete[] table[i]; //delete array
+}
+delete[] table; //Deallocates the memory (note: we still have the address, which later could be used for something else but doesn't belong to us.
+table = NULL;   // Notice the address still exists, so we null the value to prevent holding the address to memory that doesn't belong to us.
+
+*/
+
 float Identity3x3[3][3] = {
     {1, 0, 0},
     {0, 1, 0},
@@ -15,12 +39,24 @@ float Zero3x3[3][3] = {
 
 class Matrix3x3 
 {
-public:
+public: 
     float matrix[3][3] = {
-    {0, 0, 0},
-    {0, 0, 0},
-    {0, 0, 0}
-};
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0}
+    };
+
+    void Set(float matrix3x3[3][3])
+    {
+        for (size_t r = 0; r < 3; r++)
+        {
+            for (size_t c = 0; c < 3; c++)
+            {
+                matrix[r][c] = matrix3x3[r][c];
+            }
+        }
+    }
+
     Matrix3x3() {}
     Matrix3x3(float matrix3x3[3][3])
     {
@@ -33,24 +69,31 @@ public:
             
         }
     }
-};
 
-Matrix3x3 Multiply(float matrixA[3][3], float matrixB[3][3])
-{
-    Matrix3x3 result = Matrix3x3();
-    for (size_t r = 0; r < 3; r++)
+    static Matrix3x3 Multiply(const float matrixA[][3], const float matrixB[][3])
     {
-        for (size_t c = 0; c < 3; c++)
+        Matrix3x3 result = Matrix3x3();
+        for (size_t r = 0; r < 3; r++)
         {
-            Vector3<float> columnVec;
-            columnVec.x = matrixB[0][c];
-            columnVec.y = matrixB[1][c];
-            columnVec.z = matrixB[2][c];
-            result.matrix[r][c] = DotProduct(Vector3<float>(matrixA[r]), columnVec);
+            Vector3<float> rowVec = Vector3<float>(matrixA[r][0], matrixA[r][1], matrixA[r][2]);
+            for (size_t c = 0; c < 3; c++)
+            {
+                Vector3<float> columnVec;
+                columnVec.x = matrixB[0][c];
+                columnVec.y = matrixB[1][c];
+                columnVec.z = matrixB[2][c];
+                result.matrix[r][c] = DotProduct(Vector3<float>(rowVec), columnVec);
+            }
         }
-    }
 
-    return result;
+        return result;
+    }
+};
+//Matrix3x3& operator*
+Matrix3x3 operator*(const Matrix3x3& matrixA, const Matrix3x3& matrixB)
+{
+    Matrix3x3 dot = Matrix3x3::Multiply(matrixA.matrix, matrixB.matrix);
+    return dot; 
 }
 
 // Rotation Matrix about the X axis
@@ -72,6 +115,8 @@ Matrix3x3 RotX(float theta)
     Matrix3x3 matrix(standardRotX);
     return matrix;
 }
+
+
 // Rotation Matrix about the Y axis
 // | Cos(T),  0,   Sin(T)  |
 // |   0,     1,     0     |
@@ -111,4 +156,21 @@ Matrix3x3 RotZ(float theta)
     Matrix3x3 matrix(standardRotZ);
     return matrix;
 }
+
+// Intrinsic Rotations z-y'-x'' (in that order)
+Matrix3x3 RPY(float roll, float pitch, float yaw)
+{
+  Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(RotZ(yaw).matrix, RotY(pitch).matrix).matrix, RotX(roll).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  return rotation;
+}
+
+// //To-Do
+// void AngleAxisRotation(float axis[3], float angle)
+// {
+//     float mag = ((Vector3<float>)axis).Magnitude();
+//     for (size_t i = 0; i < 3; i++)
+//     {
+//         axis[i] *= angle;
+//     }
+// }
 #endif
