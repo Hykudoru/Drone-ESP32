@@ -26,6 +26,27 @@ table = NULL;   // Notice the address still exists, so we null the value to prev
 
 */
 
+/* 
+    All matrices are defined as Matrix[row][column]
+    Euler conventions: Right-handed, Intrinsic
+
+    How to use the Matrix library to perform rotations
+    -----------------------------------------------------------------
+        Z axis rotation: 
+
+        rotation = rotation * Matrix3x3::RotZ(PI/2.0);
+    ------------------------------------------------------------------
+        Euler rotation:
+
+        rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
+    ------------------------------------------------------------------
+        Undo Euler rotation:
+        
+        1st. rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
+        2nd. rotation = rotation * RPY(-180*PI/180, -45*PI/180, -90*PI/180);
+    ----------------------------------------------------------------
+*/
+
 float Identity3x3[3][3] = {
     {1, 0, 0},
     {0, 1, 0},
@@ -69,7 +90,8 @@ public:
             
         }
     }
-
+    
+    // A*B
     static Matrix3x3 Multiply(const float matrixA[][3], const float matrixB[][3])
     {
         Matrix3x3 result = Matrix3x3();
@@ -88,7 +110,68 @@ public:
 
         return result;
     }
+
+    // Rotation Matrix about the X axis (in radians)
+    // | 1,   0,      0     |
+    // | 0, Cos(T), -Sin(T) |
+    // | 0, Sin(T),  Cos(T) |
+    static Matrix3x3 RotX(float theta) 
+    {
+        float Cos = cos(theta);
+        float Sin = sin(theta);
+
+        float standardRotX[3][3] = 
+        {
+            {1, 0, 0},     
+            {0, Cos, -Sin},  
+            {0, Sin, Cos}
+        };
+
+        Matrix3x3 matrix(standardRotX);
+        return matrix;
+    }
+
+    // Rotation Matrix about the Y axis (in radians)
+    // | Cos(T),  0,   Sin(T)  |
+    // |   0,     1,     0     |
+    // |-Sin(T),  0,   Cos(T)  |
+    static Matrix3x3 RotY(float theta) 
+    {
+        float Cos = cos(theta);
+        float Sin = sin(theta);
+
+        float standardRotY[3][3] = 
+        {
+            {Cos, 0, Sin},     
+            {0,   1,  0 },  
+            {-Sin,0, Cos}
+        };
+
+        Matrix3x3 matrix(standardRotY);
+        return matrix;
+    }
+
+    // Rotation Matrix about the Z axis (in radians)
+    // | Cos(T), -Sin(T), 0 |
+    // | Sin(T),  Cos(T), 0 |
+    // |   0,      0,     1 |
+    static Matrix3x3 RotZ(float theta) 
+    {
+        float Cos = cos(theta);
+        float Sin = sin(theta);
+
+        float standardRotZ[3][3] = 
+        {
+            {Cos, -Sin,  0},     
+            {Sin,  Cos,  0},  
+            {0,     0,   1}
+        };
+
+        Matrix3x3 matrix(standardRotZ);
+        return matrix;
+    }
 };
+
 //Matrix3x3& operator*
 Matrix3x3 operator*(const Matrix3x3& matrixA, const Matrix3x3& matrixB)
 {
@@ -96,71 +179,22 @@ Matrix3x3 operator*(const Matrix3x3& matrixA, const Matrix3x3& matrixB)
     return dot; 
 }
 
-// Rotation Matrix about the X axis
-// | 1,   0,      0     |
-// | 0, Cos(T), -Sin(T) |
-// | 0, Sin(T),  Cos(T) |
-Matrix3x3 RotX(float theta) 
-{
-    float Cos = cos(theta);
-    float Sin = sin(theta);
-
-    float standardRotX[3][3] = 
-    {
-        {1, 0, 0},     
-        {0, Cos, -Sin},  
-        {0, Sin, Cos}
-    };
-
-    Matrix3x3 matrix(standardRotX);
-    return matrix;
-}
-
-
-// Rotation Matrix about the Y axis
-// | Cos(T),  0,   Sin(T)  |
-// |   0,     1,     0     |
-// |-Sin(T),  0,   Cos(T)  |
-Matrix3x3 RotY(float theta) 
-{
-    float Cos = cos(theta);
-    float Sin = sin(theta);
-
-    float standardRotY[3][3] = 
-    {
-        {Cos, 0, Sin},     
-        {0,   1,  0 },  
-        {-Sin,0, Cos}
-    };
-
-    Matrix3x3 matrix(standardRotY);
-    return matrix;
-}
-
-// Rotation Matrix about the Z axis
-// | Cos(T), -Sin(T), 0 |
-// | Sin(T),  Cos(T), 0 |
-// |   0,      0,     1 |
-Matrix3x3 RotZ(float theta) 
-{
-    float Cos = cos(theta);
-    float Sin = sin(theta);
-
-    float standardRotZ[3][3] = 
-    {
-        {Cos, -Sin,  0},     
-        {Sin,  Cos,  0},  
-        {0,     0,   1}
-    };
-
-    Matrix3x3 matrix(standardRotZ);
-    return matrix;
-}
-
-// Intrinsic Rotations z-y'-x'' (in that order)
+// Roll-Pitch-Yaw (intrinsic rotation)
+// (Right-handed) x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
 Matrix3x3 RPY(float roll, float pitch, float yaw)
 {
-  Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(RotZ(yaw).matrix, RotY(pitch).matrix).matrix, RotX(roll).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotX(roll).matrix, Matrix3x3::RotY(pitch).matrix).matrix, Matrix3x3::RotZ(yaw).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  Matrix3x3 rotation = (Matrix3x3::RotX(roll) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotZ(yaw);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  return rotation;
+}
+
+// Yaw-Pitch-Roll (intrinsic rotation) 
+// (Right-handed) z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
+Matrix3x3 YPR(float roll, float pitch, float yaw)
+{
+  //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotZ(yaw).matrix, Matrix3x3::RotY(pitch).matrix).matrix, Matrix3x3::RotX(roll).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  Matrix3x3 rotation = (Matrix3x3::RotZ(yaw) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotX(roll);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
+  
   return rotation;
 }
 

@@ -22,16 +22,27 @@ Matrix3x3 rotation = Matrix3x3(Identity3x3);
 
 void loop() 
 {
-  Serial.println("--------------");
+  Serial.println("");
   for (size_t i = 0; i < 3; i++)
   {
     
       Vector3<float> row = rotation.matrix[i];
-      String pipe = String(" | ");
+      String pipe = String("");//String(" | ");
       Serial.println(pipe+row.x+", "+row.y+", "+row.z+pipe);
   }
-  
+    
   delay(1000);
-  rotation = rotation * RotZ(PI/2.0);//rz;//rotation = Multiply(rotation.matrix, RotZ(PI/2.0).matrix);// Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
+
+
+  // rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
+  rotation = rotation * YPR(90*PI/180, 80*PI/180, 90*PI/180) * RPY(-90*PI/180, -80*PI/180, -90*PI/180);
+
+/* UNDO Euler rotation:
+    rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
+    rotation = rotation * RPY(-180*PI/180, -45*PI/180, -90*PI/180);
+*/
+  //rotation = YPR(180*PI/180, 45*PI/180, 90*PI/180);
+  //rotation = rotation * RotZ(PI/2.0);
+  //rz;//rotation = Multiply(rotation.matrix, RotZ(PI/2.0).matrix);// Multiply(Multiply(RotZ(45*PI/180).matrix, RotY(45*PI/180).matrix).matrix, RotX(45*PI/180).matrix);
   // rotation = Multiply(rotation.matrix, rotationMatrix.matrix);
 }
