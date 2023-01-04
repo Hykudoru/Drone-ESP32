@@ -18,7 +18,8 @@ void setup()
   Serial.begin(BAUD_RATE);
 }
 
-Matrix3x3 rotation = Matrix3x3(Identity3x3);
+//Matrix3x3 rotation = Matrix3x3(IDENTITY3x3);
+Matrix3x3 rotation = IDENTITY3x3;
 
 void loop() 
 {
@@ -33,10 +34,8 @@ void loop()
     
   delay(1000);
 
-
-  // rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
-  rotation = rotation * YPR(90*PI/180, 80*PI/180, 90*PI/180) * RPY(-90*PI/180, -80*PI/180, -90*PI/180);
-
+  rotation *= YPR(90*PI/180, 90*PI/180, 90*PI/180);
+  
 /* UNDO Euler rotation:
     rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
     rotation = rotation * RPY(-180*PI/180, -45*PI/180, -90*PI/180);

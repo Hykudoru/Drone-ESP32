@@ -27,32 +27,32 @@ table = NULL;   // Notice the address still exists, so we null the value to prev
 */
 
 /* 
-    All matrices are defined as Matrix[row][column]
-    Euler conventions: Right-handed, Intrinsic
+    All matrices are defined as Matrix[row][column]. Matrix multiplication A*B or Multiply(A, B) assumes the left side is the row matrix while the right side is the column matrix.
+    Euler conventions: Right-handed, Intrinsic.
 
     How to use the Matrix library to perform rotations
     -----------------------------------------------------------------
         Z axis rotation: 
 
-        rotation = rotation * Matrix3x3::RotZ(PI/2.0);
+        rotation *= Matrix3x3::RotZ(PI/2.0);
     ------------------------------------------------------------------
         Euler rotation:
 
-        rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
+        rotation *= YPR(180*PI/180, 45*PI/180, 90*PI/180);
     ------------------------------------------------------------------
         Undo Euler rotation:
         
-        1st. rotation = rotation * YPR(180*PI/180, 45*PI/180, 90*PI/180);
-        2nd. rotation = rotation * RPY(-180*PI/180, -45*PI/180, -90*PI/180);
+        1st. rotation *= YPR(180*PI/180, 45*PI/180, 90*PI/180);
+        2nd. rotation *= RPY(-180*PI/180, -45*PI/180, -90*PI/180);
     ----------------------------------------------------------------
 */
 
-float Identity3x3[3][3] = {
+float IDENTITY3x3[3][3] = {
     {1, 0, 0},
     {0, 1, 0},
     {0, 0, 1}
 };
-float Zero3x3[3][3] = {
+float ZERO3x3[3][3] = {
     {0, 0, 0},
     {0, 0, 0},
     {0, 0, 0}
@@ -73,7 +73,7 @@ public:
         {
             for (size_t c = 0; c < 3; c++)
             {
-                matrix[r][c] = matrix3x3[r][c];
+                this->matrix[r][c] = matrix3x3[r][c];
             }
         }
     }
@@ -81,14 +81,7 @@ public:
     Matrix3x3() {}
     Matrix3x3(float matrix3x3[3][3])
     {
-        for (size_t r = 0; r < 3; r++)
-        {
-            for (size_t c = 0; c < 3; c++)
-            {
-                matrix[r][c] = matrix3x3[r][c];
-            }
-            
-        }
+        this->Set(matrix3x3);
     }
     
     // A*B
@@ -109,6 +102,20 @@ public:
         }
 
         return result;
+    }
+    
+    // Same as matrixA = matrixA * matrixB
+    Matrix3x3& operator*=(Matrix3x3 matrixB)
+    {
+        *this = Multiply(this->matrix, matrixB.matrix);
+        return *this;
+    }
+
+    Matrix3x3& operator=(float matrix[3][3])
+    {
+        //*this = Matrix3x3(matrix);
+        this->Set(matrix);
+        return *this;
     }
 
     // Rotation Matrix about the X axis (in radians)
@@ -172,15 +179,14 @@ public:
     }
 };
 
-//Matrix3x3& operator*
+// A*B
 Matrix3x3 operator*(const Matrix3x3& matrixA, const Matrix3x3& matrixB)
 {
     Matrix3x3 dot = Matrix3x3::Multiply(matrixA.matrix, matrixB.matrix);
     return dot; 
 }
 
-// Roll-Pitch-Yaw (intrinsic rotation)
-// (Right-handed) x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
+// Roll-Pitch-Yaw x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
 Matrix3x3 RPY(float roll, float pitch, float yaw)
 {
   //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotX(roll).matrix, Matrix3x3::RotY(pitch).matrix).matrix, Matrix3x3::RotZ(yaw).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
@@ -188,8 +194,7 @@ Matrix3x3 RPY(float roll, float pitch, float yaw)
   return rotation;
 }
 
-// Yaw-Pitch-Roll (intrinsic rotation) 
-// (Right-handed) z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
+// Yaw-Pitch-Roll z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
 Matrix3x3 YPR(float roll, float pitch, float yaw)
 {
   //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotZ(yaw).matrix, Matrix3x3::RotY(pitch).matrix).matrix, Matrix3x3::RotX(roll).matrix);//Multiply(rotation.matrix, RotZ(PI/2.0).matrix);
