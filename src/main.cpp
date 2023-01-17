@@ -89,7 +89,7 @@ void CopyCommand()
 void PasteCommand()
 {
   Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('c');
+  Keyboard.press('v');
   Keyboard.releaseAll();
 } 
 
