@@ -1,50 +1,45 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 #include <Vector.h>
-
 /* 
-------Dynamic Allocate/Dealocate------
-float* dynArray = new float[rows];
-delete[] dynArray;
-dynArray = NULL;
-
-
-------Dynamic Allocate------
-float** table = new float*[rows];
-for (size_t i = 0; i < rows; i++) 
-{
-    table[i] = new float[cols];
-}
-
------Dynamic Dealocate (Notice that the process is actually reversed)-----
-for (size_t i = 0; i < rows; i++) 
-{
-    delete[] table[i]; //delete array
-}
-delete[] table; //Deallocates the memory (note: we still have the address, which later could be used for something else but doesn't belong to us.
-table = NULL;   // Notice the address still exists, so we null the value to prevent holding the address to memory that doesn't belong to us.
-
-*/
-
-/* 
-    All matrices are defined as Matrix[row][column]. Matrix multiplication A*B or Multiply(A, B) assumes the left side is the row matrix while the right side is the column matrix.
+    This matrix library can be used for calculating rotation matrices used in 3-dimensional coordinate space.
+   
     Euler conventions: Right-handed, Intrinsic.
 
-    How to use the Matrix library to perform rotations
-    -----------------------------------------------------------------
-        Z axis rotation: 
+    ===============[ Things to Know ]================
 
-        rotation *= Matrix3x3::RotZ(PI/2.0);
-    ------------------------------------------------------------------
-        Euler rotation:
+    Rotation matrices can be used to track the orientation of a mobile rigid-body relative to a globally fixed world axis frame of reference. 
+    Combining a sequence of elemental rotations in any order to get the newly rotated axis frame.
+    Intrinsic rotations rotate about the axes of the fixed coordinate system frame attached to the rigid body in motion. 
 
-        rotation *= YPR(180*PI/180, 45*PI/180, 90*PI/180);
-    ------------------------------------------------------------------
-        Undo Euler rotation:
-        
+    ===============[ How To use this library ]================
+
+    - Extracting colums and rows follow the pattern: Matrix[row][column]. 
+    - Matrix multiplication A*B or Multiply(A, B) assumes A is the row matrix while B is the column matrix.
+    - The *= operator can be used like so: A *= B, means A = A*B, where B is the column matrix.
+
+    EXAMPLES:
+
+    --------------------------------------------------------------------------------------------------
+    Z AXIS ROTATION: 
+
+        rotation = Matrix3x3::RotZ(PI/2.0);
+    --------------------------------------------------------------------------------------------------
+    EULER ROTATION:
+
+        Matrix3x3 rotation = (Matrix3x3::RotZ(yaw) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotX(roll);
+    --------------------------------------------------------------------------------------------------
+    YAW-PITCH-ROLL:
+
+        rotation = YPR(180*PI/180, 45*PI/180, 90*PI/180);
+    --------------------------------------------------------------------------------------------------
+    Undo Previous rotation:
+            
         1st. rotation *= YPR(180*PI/180, 45*PI/180, 90*PI/180);
         2nd. rotation *= RPY(-180*PI/180, -45*PI/180, -90*PI/180);
-    ----------------------------------------------------------------
+    --------------------------------------------------------------------------------------------------
+
+
 */
 
 float IDENTITY3x3[3][3] = {
